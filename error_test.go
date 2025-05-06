@@ -109,31 +109,32 @@ func TestErrorEmpty(t *testing.T) {
 }
 
 func TestErrorNotEmpty(t *testing.T) {
-	now := time.Now()
+	now := time.Now().UnixMicro()
 	err := Err{
 		Value:     errors.New("test"),
 		Msg:       "My error message",
 		Details:   nil,
 		File:      "error_test.go",
 		Line:      26,
-		Timestamp: now.UnixMicro(),
+		Timestamp: now,
 		Prev:      nil,
 	}
 
-	expected := "value=test, msg=My error message, source=error_test.go:26, timestamp=" + now.Format(time.RFC3339Nano)
+	expected := "value=test, msg=My error message, source=error_test.go:26, timestamp=" +
+		time.UnixMicro(now).Format(time.RFC3339Nano)
 
 	assert.Equal(t, expected, err.Error())
 }
 
 func TestErrorNestedErrors(t *testing.T) {
-	now := time.Now()
+	now := time.Now().UnixMicro()
 	err2 := Err{
 		Value:     errors.New("test 2"),
 		Msg:       "My error message 2",
 		Details:   nil,
 		File:      "",
 		Line:      0,
-		Timestamp: now.UnixMicro(),
+		Timestamp: now,
 		Prev:      nil,
 	}
 	err := Err{
@@ -142,13 +143,13 @@ func TestErrorNestedErrors(t *testing.T) {
 		Details:   nil,
 		File:      "error_test.go",
 		Line:      26,
-		Timestamp: now.UnixMicro(),
+		Timestamp: now,
 		Prev:      &err2,
 	}
 
 	expected := "value=test, msg=My error message, source=error_test.go:26, timestamp="
-	expected += now.Format(time.RFC3339Nano) + ", prev={value=test 2, msg=My error message 2, "
-	expected += "timestamp=" + now.Format(time.RFC3339Nano) + "}"
+	expected += time.UnixMicro(now).Format(time.RFC3339Nano) + ", prev={value=test 2, msg=My error message 2, "
+	expected += "timestamp=" + time.UnixMicro(now).Format(time.RFC3339Nano) + "}"
 
 	assert.Equal(t, expected, err.Error())
 }
