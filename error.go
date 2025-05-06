@@ -64,7 +64,11 @@ func (e Err) Error() string {
 		return ""
 	}
 
-	result := fmt.Sprintf("value=%v, msg=%s", e.Value, e.Msg)
+	result := fmt.Sprintf("value=%v", e.Value)
+
+	if e.Msg != "" {
+		result += fmt.Sprintf(", msg=%+v", e.Msg)
+	}
 
 	if e.Details != nil {
 		result += fmt.Sprintf(", details=%+v", e.Details)

@@ -182,7 +182,7 @@ func TestErrorWithDetails(t *testing.T) {
 	now := time.Now().UnixMicro()
 	err := Err{
 		Value:     errors.New("test"),
-		Msg:       "My error message",
+		Msg:       "My message",
 		Details:   details,
 		File:      "error_test.go",
 		Line:      26,
@@ -190,7 +190,25 @@ func TestErrorWithDetails(t *testing.T) {
 		Prev:      nil,
 	}
 
-	expected := "value=test, msg=My error message, details={Name:John Doe Age:23}, source=error_test.go:26, timestamp=" + time.UnixMicro(now).Format(time.RFC3339Nano)
+	expected := "value=test, msg=My message, details={Name:John Doe Age:23}, source=error_test.go:26, timestamp=" +
+		time.UnixMicro(now).Format(time.RFC3339Nano)
+
+	assert.Equal(t, expected, err.Error())
+}
+
+func TestErrorWithMsg(t *testing.T) {
+	now := time.Now().UnixMicro()
+	err := Err{
+		Value:     errors.New("test"),
+		Msg:       "",
+		Details:   nil,
+		File:      "error_test.go",
+		Line:      26,
+		Timestamp: now,
+		Prev:      nil,
+	}
+
+	expected := "value=test, source=error_test.go:26, timestamp=" + time.UnixMicro(now).Format(time.RFC3339Nano)
 
 	assert.Equal(t, expected, err.Error())
 }
@@ -259,7 +277,8 @@ func TestJSONSimple(t *testing.T) {
 		Prev:      nil,
 	}
 
-	expected := []byte(`{"value":"test","details":null,"timestamp":"` + time.UnixMicro(now).Format(time.RFC3339Nano) + `","msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
+	expected := []byte(`{"value":"test","details":null,"timestamp":"` + time.UnixMicro(now).Format(time.RFC3339Nano) +
+		`","msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
 	assert.Equal(t, EmptyErr(), err)
