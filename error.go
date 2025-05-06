@@ -79,18 +79,27 @@ func (e Err) Error() string {
 // It uses the errors.Is function to check if the error in the Err struct
 // matches the provided error value.
 func (e Err) Is(err error) bool {
-	return errors.Is(e.Value, err)
-}
+	if errors.Is(e.Value, err) {
+		return true
+	}
 
-// As checks if the error in the Err struct can be cast to a specific type.
-//
-// As panics if target is not a non-nil pointer to either a type that implements error, or to any interface type.
-func (e Err) As(target any) bool {
-	return errors.As(e.Value, &target)
+	prev := e.Prev
+	for !(prev == nil) {
+		if errors.Is(prev.Value, err) {
+			return true
+		}
+
+		prev = prev.Prev
+	}
+	return false
 }
 
 // JSON converts the Err struct into a JSON representation.
 func (e Err) JSON() ([]byte, Err) {
+	if e.IsEmpty() {
+		return []byte{}, EmptyErr()
+	}
+
 	s, err := json.Marshal(e)
 	if err != nil {
 		return []byte{}, NewErr(err, "Error when converting Err into JSON", nil, nil)
@@ -110,8 +119,9 @@ func (e Err) MarshalJSON() ([]byte, error) {
 	type Alias Err // Use an alias to avoid infinite recursion
 
 	return json.Marshal(&struct {
-		Value   string `json:"value"`
-		Details any    `json:"details"`
+		Value     string    `json:"value"`
+		Details   any       `json:"details"`
+		Timestamp time.Time `json:"timestamp"`
 		Alias
 	}{
 		Value: func() string {
@@ -134,6 +144,7 @@ func (e Err) MarshalJSON() ([]byte, error) {
 
 			return e.Details
 		}(),
-		Alias: (Alias)(e),
+		Timestamp: time.UnixMicro(e.Timestamp),
+		Alias:     (Alias)(e),
 	})
 }
