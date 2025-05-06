@@ -7,6 +7,7 @@
 	test-tparse \
 	bench \
 	clean \
+	doc \
 	help \
 	test-cover-count \
 	cover-count \
@@ -35,6 +36,7 @@ GO_MOD=$(GO_CMD) mod
 GO_TOOL=$(GO_CMD) tool
 GO_VET=$(GO_CMD) vet
 GO_FMT=$(GO_CMD) fmt
+GODOC=godoc
 
 ## update: Update modules
 update:
@@ -100,6 +102,10 @@ clean:
 	$(GO_CLEAN)
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_UNIX)
+
+## doc: Launch godoc on port 9898
+doc:
+	$(GODOC) -http :9898
 
 help: Makefile
 	@echo

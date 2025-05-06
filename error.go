@@ -1,3 +1,9 @@
+// Package xerr is a simple error wrapper that provides additional context and
+// functionality for error handling in Go applications.
+//
+// It includes features such as JSON serialization, nested error handling,
+// and custom error messages. The package is designed to be straightforward to use
+// and integrate into existing Go codebases, making it a valuable tool.
 package xerr
 
 import (
@@ -26,6 +32,16 @@ type Err struct {
 // details, and a pointer to a previous Err struct.
 //
 // The timestamp is set to the current time in microseconds since the epoch.
+//
+// Example:
+//
+//	var myError = errors.New("my error")
+//	type Person struct {
+//	    Name string `json:"name"`
+//	    Age  int    `json:"age"`
+//	}
+//	details := Person{Name: "John", Age: 30}
+//	err := NewErr(myError, "My error message", details, nil)
 func NewErr(value error, msg string, details any, next *Err) Err {
 	if value == nil {
 		return EmptyErr()
@@ -90,8 +106,18 @@ func (e Err) Error() string {
 }
 
 // Is checks if the error in the Err struct is of a specific type or value.
+//
 // It uses the errors.Is function to check if the error in the Err struct
 // matches the provided error value.
+//
+// Example:
+//
+//	var myError = errors.New("my error")
+//	details := Person{Name: "John", Age: 30}
+//	err := NewErr(myError, "My error message", details, nil)
+//	if err.Is(myError) {
+//		fmt.Println("The error matches myError")
+//	}
 func (e Err) Is(err error) bool {
 	if errors.Is(e.Value, err) {
 		return true
@@ -126,8 +152,11 @@ func (e Err) JSON() ([]byte, Err) {
 //
 // It customizes the JSON representation of the Err struct to include the error message
 // and other fields in a specific format.
+//
 // The Value field is converted to a string using the Error() method if it is not nil.
+//
 // The function returns the JSON representation of the Err struct.
+//
 // If the Value field is nil, it returns an empty string for the Value field in the JSON output.
 func (e Err) MarshalJSON() ([]byte, error) {
 	type Alias Err // Use an alias to avoid infinite recursion
