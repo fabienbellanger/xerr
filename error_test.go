@@ -16,7 +16,7 @@ import (
 //
 // ----------------------------------------------------------------------------
 
-func TestNewErrSimpleError(t *testing.T) {
+func TestErr_NewErr_SimpleError(t *testing.T) {
 	details := struct {
 		Name string
 		Age  int
@@ -35,7 +35,7 @@ func TestNewErrSimpleError(t *testing.T) {
 	assert.Nil(t, err.Prev)
 }
 
-func TestNewErrNestedErrors(t *testing.T) {
+func TestErr_NewErr_NestedErrors(t *testing.T) {
 	err2 := NewErr(errors.New("test 2"), "My error message 2", nil, nil)
 	err1 := NewErr(errors.New("test 1"), "My error message 1", nil, &err2)
 
@@ -52,7 +52,7 @@ func TestNewErrNestedErrors(t *testing.T) {
 	assert.Equal(t, 39, err2.Line)
 }
 
-func TestNewErrEmptyError(t *testing.T) {
+func TestErr_NewErr_EmptyError(t *testing.T) {
 	err := NewErr(nil, "My error message", nil, nil)
 
 	assert.Equal(t, Err{}, err)
@@ -64,7 +64,7 @@ func TestNewErrEmptyError(t *testing.T) {
 //
 // ----------------------------------------------------------------------------
 
-func TestEmptyErr(t *testing.T) {
+func TestErr_EmptyErr(t *testing.T) {
 	assert.Equal(t, Err{}, EmptyErr())
 }
 
@@ -74,7 +74,7 @@ func TestEmptyErr(t *testing.T) {
 //
 // ----------------------------------------------------------------------------
 
-func TestIsEmpty(t *testing.T) {
+func TestErr_IsEmpty(t *testing.T) {
 	err := EmptyErr()
 	assert.True(t, err.IsEmpty())
 
@@ -88,7 +88,7 @@ func TestIsEmpty(t *testing.T) {
 //
 // ----------------------------------------------------------------------------
 
-func TestIsError(t *testing.T) {
+func TestErr_IsError(t *testing.T) {
 	err := EmptyErr()
 	assert.False(t, err.IsError())
 
@@ -102,13 +102,13 @@ func TestIsError(t *testing.T) {
 //
 // ----------------------------------------------------------------------------
 
-func TestErrorEmpty(t *testing.T) {
+func TestErr_Error_Empty(t *testing.T) {
 	err := EmptyErr()
 
 	assert.Equal(t, "", err.Error())
 }
 
-func TestErrorNotEmpty(t *testing.T) {
+func TestErr_Error_NotEmpty(t *testing.T) {
 	now := time.Now().UnixMicro()
 	err := Err{
 		Value:     errors.New("test"),
@@ -126,7 +126,7 @@ func TestErrorNotEmpty(t *testing.T) {
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestErrorNestedErrors(t *testing.T) {
+func TestErr_Error_NestedErrors(t *testing.T) {
 	now := time.Now().UnixMicro()
 	err2 := Err{
 		Value:     errors.New("test 2"),
@@ -154,7 +154,7 @@ func TestErrorNestedErrors(t *testing.T) {
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestErrorWithoutTimestamp(t *testing.T) {
+func TestErr_Error_WithoutTimestamp(t *testing.T) {
 	err := Err{
 		Value:     errors.New("test"),
 		Msg:       "My error message",
@@ -170,7 +170,7 @@ func TestErrorWithoutTimestamp(t *testing.T) {
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestErrorWithDetails(t *testing.T) {
+func TestErr_Error_WithDetails(t *testing.T) {
 	details := struct {
 		Name string
 		Age  int
@@ -196,7 +196,7 @@ func TestErrorWithDetails(t *testing.T) {
 	assert.Equal(t, expected, err.Error())
 }
 
-func TestErrorWithMsg(t *testing.T) {
+func TestErr_Error_WithMsg(t *testing.T) {
 	now := time.Now().UnixMicro()
 	err := Err{
 		Value:     errors.New("test"),
@@ -219,14 +219,14 @@ func TestErrorWithMsg(t *testing.T) {
 //
 // ----------------------------------------------------------------------------
 
-func TestIs(t *testing.T) {
+func TestErr_Is(t *testing.T) {
 	myErr := errors.New("my error")
 	err := NewErr(myErr, "My error message", nil, nil)
 
 	assert.True(t, err.Is(myErr))
 }
 
-func TestIsNested(t *testing.T) {
+func TestErr_Is_NestedErrors(t *testing.T) {
 	myErr := errors.New("my error")
 	myErr2 := errors.New("my error 2")
 	myErr3 := errors.New("my error 3")
@@ -239,7 +239,7 @@ func TestIsNested(t *testing.T) {
 	assert.True(t, err.Is(myErr3))
 }
 
-func TestIsFalse(t *testing.T) {
+func TestErr_Is_False(t *testing.T) {
 	myErr := errors.New("my error")
 	myErr2 := errors.New("my error 2")
 	err := NewErr(myErr, "My error message", nil, nil)
@@ -254,7 +254,7 @@ func TestIsFalse(t *testing.T) {
 //
 // ----------------------------------------------------------------------------
 
-func TestJSONEmpty(t *testing.T) {
+func TestErr_JSON_Empty(t *testing.T) {
 	e := EmptyErr()
 	expected := []byte("")
 	result, err := e.JSON()
@@ -265,7 +265,7 @@ func TestJSONEmpty(t *testing.T) {
 	assert.Equal(t, expected, result)
 }
 
-func TestJSONSimple(t *testing.T) {
+func TestErr_JSON_Simple(t *testing.T) {
 	now := time.Now().UnixMicro()
 	e := Err{
 		Value:     errors.New("test"),
@@ -285,7 +285,7 @@ func TestJSONSimple(t *testing.T) {
 	assert.Equal(t, expected, result)
 }
 
-func TestJSONDetail(t *testing.T) {
+func TestErr_JSON_Detail(t *testing.T) {
 	now := time.Now().UnixMicro()
 	details := struct {
 		Name string `json:"name"`
@@ -314,7 +314,7 @@ func TestJSONDetail(t *testing.T) {
 	assert.Equal(t, expected, result)
 }
 
-func TestJSONNestedErrors(t *testing.T) {
+func TestErr_JSON_NestedErrors(t *testing.T) {
 	now := time.Now().UnixMicro()
 
 	e := Err{
@@ -346,7 +346,7 @@ func TestJSONNestedErrors(t *testing.T) {
 	assert.Equal(t, expected, result)
 }
 
-func TestJSONDetailError(t *testing.T) {
+func TestErr_JSON_DetailError(t *testing.T) {
 	now := time.Now().UnixMicro()
 	details := struct {
 		Channel chan int

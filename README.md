@@ -1,4 +1,4 @@
-# xerr
+# xerr: An extended error library for Go
 
 [![Build status](https://github.com/fabienbellanger/xerr/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/fabienbellanger/xerr/actions/workflows/CI.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/fabienbellanger/xerr)](https://goreportcard.com/report/github.com/fabienbellanger/xerr)
@@ -7,5 +7,5 @@
 
 ## TO-DO list
 
-- [ ] Add benchmarks
+- [x] Add benchmarks
 - [ ] Document the `README.md`
