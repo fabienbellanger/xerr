@@ -120,7 +120,7 @@ func TestErrorNotEmpty(t *testing.T) {
 		Prev:      nil,
 	}
 
-	expected := "value=test, msg=My error message, details=<nil>, file=error_test.go, line=26, timestamp=" + now.Format(time.RFC3339Nano) + ", prev={<nil>}"
+	expected := "value=test, msg=My error message, source=error_test.go:26, timestamp=" + now.Format(time.RFC3339Nano)
 
 	assert.Equal(t, expected, err.Error())
 }
@@ -131,8 +131,8 @@ func TestErrorNestedErrors(t *testing.T) {
 		Value:     errors.New("test 2"),
 		Msg:       "My error message 2",
 		Details:   nil,
-		File:      "error_test.go",
-		Line:      223,
+		File:      "",
+		Line:      0,
 		Timestamp: now.UnixMicro(),
 		Prev:      nil,
 	}
@@ -146,9 +146,50 @@ func TestErrorNestedErrors(t *testing.T) {
 		Prev:      &err2,
 	}
 
-	expected := "value=test, msg=My error message, details=<nil>, file=error_test.go, line=26, timestamp="
-	expected += now.Format(time.RFC3339Nano) + ", prev={value=test 2, msg=My error message 2, details=<nil>, "
-	expected += "file=error_test.go, line=223, timestamp=" + now.Format(time.RFC3339Nano) + ", prev={<nil>}}"
+	expected := "value=test, msg=My error message, source=error_test.go:26, timestamp="
+	expected += now.Format(time.RFC3339Nano) + ", prev={value=test 2, msg=My error message 2, "
+	expected += "timestamp=" + now.Format(time.RFC3339Nano) + "}"
+
+	assert.Equal(t, expected, err.Error())
+}
+
+func TestErrorWithoutTimestamp(t *testing.T) {
+	err := Err{
+		Value:     errors.New("test"),
+		Msg:       "My error message",
+		Details:   nil,
+		File:      "error_test.go",
+		Line:      26,
+		Timestamp: 0,
+		Prev:      nil,
+	}
+
+	expected := "value=test, msg=My error message, source=error_test.go:26"
+
+	assert.Equal(t, expected, err.Error())
+}
+
+func TestErrorWithDetails(t *testing.T) {
+	details := struct {
+		Name string
+		Age  int
+	}{
+		Name: "John Doe",
+		Age:  23,
+	}
+
+	now := time.Now()
+	err := Err{
+		Value:     errors.New("test"),
+		Msg:       "My error message",
+		Details:   details,
+		File:      "error_test.go",
+		Line:      26,
+		Timestamp: now.UnixMicro(),
+		Prev:      nil,
+	}
+
+	expected := "value=test, msg=My error message, details={Name:John Doe Age:23}, source=error_test.go:26, timestamp=" + now.Format(time.RFC3339Nano)
 
 	assert.Equal(t, expected, err.Error())
 }

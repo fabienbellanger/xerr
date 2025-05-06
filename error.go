@@ -64,15 +64,25 @@ func (e Err) Error() string {
 		return ""
 	}
 
-	return fmt.Sprintf("value=%v, msg=%s, details=%v, file=%s, line=%d, timestamp=%s, prev={%s}",
-		e.Value,
-		e.Msg,
-		e.Details,
-		e.File,
-		e.Line,
-		time.UnixMicro(e.Timestamp).Format(time.RFC3339Nano),
-		e.Prev,
-	)
+	result := fmt.Sprintf("value=%v, msg=%s", e.Value, e.Msg)
+
+	if e.Details != nil {
+		result += fmt.Sprintf(", details=%+v", e.Details)
+	}
+
+	if e.File != "" {
+		result += fmt.Sprintf(", source=%s:%d", e.File, e.Line)
+	}
+
+	if e.Timestamp != 0 {
+		result += fmt.Sprintf(", timestamp=%s", time.UnixMicro(e.Timestamp).Format(time.RFC3339Nano))
+	}
+
+	if e.Prev != nil {
+		result += fmt.Sprintf(", prev={%s}", e.Prev.Error())
+	}
+
+	return result
 }
 
 // Is checks if the error in the Err struct is of a specific type or value.

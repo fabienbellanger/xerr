@@ -8,3 +8,4 @@
 ## TO-DO list
 
 - [ ] Add benchmarks
+- [ ] Document the `README.md`
