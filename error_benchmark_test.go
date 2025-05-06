@@ -67,3 +67,16 @@ func BenchmarkErr_Is_NestedErrors(b *testing.B) {
 		_ = ok
 	}
 }
+
+func BenchmarkErr_Clone(b *testing.B) {
+	var myErr1 = errors.New("my error 1")
+	var myErr2 = errors.New("my error 2")
+	e2 := NewErr(myErr2, "My error message 2", nil, nil)
+	e1 := NewErr(myErr1, "My error message 1", nil, &e2)
+	e := NewErr(errors.New("test"), "My error message", nil, &e1)
+
+	for b.Loop() {
+		err := e.Clone()
+		_ = err
+	}
+}

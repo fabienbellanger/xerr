@@ -371,3 +371,115 @@ func TestErr_JSON_DetailError(t *testing.T) {
 	assert.Equal(t, EmptyErr(), err)
 	assert.Equal(t, expected, result)
 }
+
+// ----------------------------------------------------------------------------
+//
+// Tests of ValueEq()
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_ValueEq(t *testing.T) {
+	var myErr = errors.New("test 1")
+
+	err1 := NewErr(myErr, "My error message 1", nil, nil)
+	err2 := NewErr(myErr, "My error message 2", nil, nil)
+
+	assert.True(t, err1.ValueEq(err2))
+	assert.True(t, err2.ValueEq(err1))
+}
+
+func TestErr_ValueEq_WithDifferentValues(t *testing.T) {
+	var myErr1 = errors.New("test 1")
+	var myErr2 = errors.New("test 2")
+
+	err1 := NewErr(myErr1, "My error message 1", nil, nil)
+	err2 := NewErr(myErr1, "My error message 2", nil, nil)
+
+	// With different values
+	err1.Value = myErr2
+
+	assert.False(t, err1.ValueEq(err2))
+	assert.False(t, err2.ValueEq(err1))
+}
+
+// ----------------------------------------------------------------------------
+//
+// Tests of Eq()
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_Eq_Simple(t *testing.T) {
+	var myErr1 = errors.New("test 1")
+	var myErr2 = errors.New("test 2")
+
+	err := NewErr(myErr2, "My error message", nil, nil)
+	err1 := NewErr(myErr1, "My error message 1", nil, &err)
+	err2 := NewErr(myErr1, "My error message 2", nil, &err)
+
+	assert.True(t, err1.Eq(err2))
+	assert.True(t, err2.Eq(err1))
+}
+
+func TestErr_Eq_WithDifferentValues(t *testing.T) {
+	var myErr1 = errors.New("test 1")
+	var myErr2 = errors.New("test 2")
+	var myErr3 = errors.New("test 3")
+
+	err := NewErr(myErr2, "My error message", nil, nil)
+	err1 := NewErr(myErr1, "My error message 1", nil, &err)
+	err2 := NewErr(myErr1, "My error message 2", nil, &err)
+
+	// With different values for value
+	err1.Value = myErr3
+
+	assert.False(t, err1.Eq(err2))
+	assert.False(t, err2.Eq(err1))
+}
+
+func TestErr_Eq_WithDifferentPrevValues(t *testing.T) {
+	var myErr1 = errors.New("test 1")
+	var myErr2 = errors.New("test 2")
+	var myErr3 = errors.New("test 3")
+
+	err := NewErr(myErr2, "My error message", nil, nil)
+	err1 := NewErr(myErr1, "My error message 1", nil, &err)
+	err2 := NewErr(myErr1, "My error message 2", nil, &err)
+
+	// With different values for prev
+	err1.Prev.Value = myErr3
+
+	assert.False(t, err1.Eq(err2))
+	assert.False(t, err2.Eq(err1))
+}
+
+// ----------------------------------------------------------------------------
+//
+// Tests of Clone()
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_Clone_Empty(t *testing.T) {
+	err := EmptyErr()
+	clone := err.Clone()
+
+	assert.Equal(t, err, *clone)
+}
+
+func TestErr_Clone_Simple(t *testing.T) {
+	var myErr = errors.New("test 1")
+	err := NewErr(myErr, "My error message 1", nil, nil)
+	clone := err.Clone()
+
+	assert.Equal(t, err, *clone)
+}
+
+func TestErr_Clone_NestedErrors(t *testing.T) {
+	var myErr1 = errors.New("test 1")
+	var myErr2 = errors.New("test 2")
+
+	err := NewErr(myErr2, "My error message", nil, nil)
+	err1 := NewErr(myErr1, "My error message 1", nil, &err)
+	clone := err1.Clone()
+
+	assert.Equal(t, err1, *clone)
+}

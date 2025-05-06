@@ -56,7 +56,33 @@ func NewErr(value error, msg string, details any, next *Err) Err {
 		File:      file,
 		Line:      line,
 		Timestamp: time.Now().UnixMicro(),
-		Prev:      next,
+		Prev:      next.Clone(),
+	}
+}
+
+// Clone creates a deep copy of the Err struct.
+//
+// It recursively clones the Prev field to ensure that the entire error chain
+// is duplicated.
+func (e *Err) Clone() *Err {
+	if e == nil {
+		return nil
+	}
+
+	// Reservely clone the Prev field to avoid modifying the original
+	var clonedPrev *Err
+	if e.Prev != nil {
+		clonedPrev = e.Prev.Clone()
+	}
+
+	return &Err{
+		Value:     e.Value,
+		Msg:       e.Msg,
+		Details:   e.Details,
+		File:      e.File,
+		Line:      e.Line,
+		Timestamp: e.Timestamp,
+		Prev:      clonedPrev,
 	}
 }
 
@@ -190,4 +216,35 @@ func (e Err) MarshalJSON() ([]byte, error) {
 		Timestamp: time.UnixMicro(e.Timestamp),
 		Alias:     (Alias)(e),
 	})
+}
+
+// ValueEq checks if the Value field of the Err struct is equal to
+// the Value field of another Err struct.
+//
+// Example:
+//
+//	var myError = errors.New("my error")
+//	err1 := NewErr(myErr, "My error message 1", nil, nil)
+//	err2 := NewErr(myErr, "My error message 2", nil, nil)
+//	println(err1.ValueEq(err2)) // true
+func (e *Err) ValueEq(other Err) bool {
+	return e.Value == other.Value
+}
+
+// Eq checks if the Err struct is equal to another Err struct only by comparing
+// the Value field and the previous errors in the chain.
+func (e *Err) Eq(other Err) bool {
+	if e.Value != other.Value {
+		return false
+	}
+
+	prev := e.Prev
+	for !(prev == nil) {
+		if prev.Value != other.Prev.Value {
+			return false
+		}
+
+		prev = prev.Prev
+	}
+	return true
 }
