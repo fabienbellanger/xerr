@@ -20,6 +20,7 @@ import (
 // timestamp, and a pointer to a previous error.
 type Err struct {
 	Value     error  `json:"value"`
+	Code      int    `json:"code"`
 	Msg       string `json:"msg"`
 	Details   any    `json:"details"`
 	File      string `json:"file"`
@@ -42,7 +43,7 @@ type Err struct {
 //	}
 //	details := Person{Name: "John", Age: 30}
 //	err := NewErr(myError, "My error message", details, nil)
-func NewErr(value error, msg string, details any, next *Err) Err {
+func NewErr(value error, msg string, details any, code int, next *Err) Err {
 	if value == nil {
 		return EmptyErr()
 	}
@@ -51,6 +52,7 @@ func NewErr(value error, msg string, details any, next *Err) Err {
 
 	return Err{
 		Value:     value,
+		Code:      code,
 		Msg:       msg,
 		Details:   details,
 		File:      file,
@@ -77,6 +79,7 @@ func (e *Err) Clone() *Err {
 
 	return &Err{
 		Value:     e.Value,
+		Code:      e.Code,
 		Msg:       e.Msg,
 		Details:   e.Details,
 		File:      e.File,
@@ -107,6 +110,10 @@ func (e Err) Error() string {
 	}
 
 	result := fmt.Sprintf("value=%v", e.Value)
+
+	if e.Code != 0 {
+		result += fmt.Sprintf(", code=%d", e.Code)
+	}
 
 	if e.Msg != "" {
 		result += fmt.Sprintf(", msg=%+v", e.Msg)
@@ -160,6 +167,19 @@ func (e Err) Is(err error) bool {
 	return false
 }
 
+// Unwrap returns the previous error in the chain, if any.
+//
+// This method is used to retrieve the underlying error that caused the current error.
+// It is part of the error wrapping mechanism in Go.
+// The Unwrap method allows you to access the original error that was wrapped
+// in the Err struct, enabling you to inspect or handle it as needed.
+func (e *Err) Unwrap() error {
+	if e.Prev != nil {
+		return *e.Prev
+	}
+	return nil
+}
+
 // JSON converts the Err struct into a JSON representation.
 func (e Err) JSON() ([]byte, Err) {
 	if e.IsEmpty() {
@@ -168,7 +188,7 @@ func (e Err) JSON() ([]byte, Err) {
 
 	s, err := json.Marshal(e)
 	if err != nil {
-		return []byte{}, NewErr(err, "Error when converting Err into JSON", nil, nil)
+		return []byte{}, NewErr(err, "Error when converting Err into JSON", nil, 0, nil)
 	}
 
 	return s, EmptyErr()
@@ -218,6 +238,14 @@ func (e Err) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// ErrFromJSON converts a JSON byte array into an Err struct.
+// func ErrFromJSON(data []byte) (Err, error) {
+// 	var e Err
+// 	err := json.Unmarshal(data, &e)
+
+// 	return e, err
+// }
+
 // ValueEq checks if the Value field of the Err struct is equal to
 // the Value field of another Err struct.
 //
@@ -247,4 +275,16 @@ func (e *Err) Eq(other Err) bool {
 		prev = prev.Prev
 	}
 	return true
+}
+
+// ToError converts the Err struct to a standard error.
+//
+// If the Err struct is nil or empty, it returns nil.
+// If the Err struct is not nil, it returns a new error with the message
+// from the Err struct.
+func (e *Err) ToError() error {
+	if e == nil || e.IsEmpty() {
+		return nil
+	}
+	return errors.New(e.Error())
 }

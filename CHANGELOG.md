@@ -22,4 +22,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add unit tests
+- Add `Code` field to `Err`
+- Add `Unwrap()` and `ToError()` method to `Err`
+
+### Change
+
+- [BREAKING] Change `NewErr` function to add the error code
+
+## `0.2.0` (2025-05-06) [CURRENT]
+
+### Added
+
+- Add methods Clone, ValueEq and Eq to Err
+
+## `0.1.0` (2025-05-06)
+
+### Added
+
+- First version
