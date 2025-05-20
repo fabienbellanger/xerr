@@ -6,3 +6,25 @@
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=square)](https://pkg.go.dev/github.com/fabienbellanger/xerr)
 
 > xerr is a Go package that provides extended error handling capabilities, including error wrapping, stack traces, error codes, and additional context information to make debugging and error management easier in Go applications.
+
+## Benchmarks
+
+Run:
+```bash
+make bench
+```
+
+Results:
+```
+goos: darwin
+goarch: arm64
+pkg: github.com/fabienbellanger/xerr
+cpu: Apple M3
+BenchmarkErr_Error-8                     2832218               422.7 ns/op           264 B/op          3 allocs/op
+BenchmarkErr_JSON_Simple-8                549771              2137 ns/op             720 B/op          5 allocs/op
+BenchmarkErr_JSON_WithDetails-8           448258              2639 ns/op             752 B/op          7 allocs/op
+BenchmarkErr_JSON_NestedErrors-8           75326             15828 ns/op            3989 B/op         14 allocs/op
+BenchmarkErr_Is_Simple-8                100000000               11.65 ns/op            0 B/op          0 allocs/op
+BenchmarkErr_Is_NestedErrors-8          55479355                22.90 ns/op            0 B/op          0 allocs/op
+BenchmarkErr_Clone-8                    11963326               103.4 ns/op           288 B/op          3 allocs/op
+```
