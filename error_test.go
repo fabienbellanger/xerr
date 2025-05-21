@@ -57,14 +57,14 @@ func TestErr_NewErr_NestedErrors(t *testing.T) {
 	assert.Equal(t, "My error message 1", err1.Msg)
 	assert.Nil(t, err1.Details)
 	assert.True(t, strings.Contains(err1.File, "error_test.go"))
-	assert.Equal(t, 41, err1.Line)
+	assert.Equal(t, 53, err1.Line)
 
 	assert.Equal(t, errors.New("test 2"), err2.Value)
 	assert.Equal(t, 20, err2.Code)
 	assert.Equal(t, "My error message 2", err2.Msg)
 	assert.Nil(t, err2.Details)
 	assert.True(t, strings.Contains(err2.File, "error_test.go"))
-	assert.Equal(t, 40, err2.Line)
+	assert.Equal(t, 52, err2.Line)
 }
 
 func TestErr_NewErr_EmptyError(t *testing.T) {
