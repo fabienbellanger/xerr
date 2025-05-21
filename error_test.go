@@ -36,6 +36,18 @@ func TestErr_NewErr_SimpleError(t *testing.T) {
 	assert.Nil(t, err.Prev)
 }
 
+func TestErr_NewErr_With_Err(t *testing.T) {
+	err2 := NewErr(errors.New("test 2"), "My error message 2", nil, 20, nil)
+	err1 := NewErr(err2, "My error message 1", nil, 10, nil)
+
+	assert.Equal(t, err2, err1.Value)
+	assert.Equal(t, 10, err1.Code)
+	assert.Equal(t, "My error message 1", err1.Msg)
+	assert.Nil(t, err1.Details)
+	assert.True(t, strings.Contains(err1.File, "error_test.go"))
+	assert.Equal(t, 41, err1.Line)
+}
+
 func TestErr_NewErr_NestedErrors(t *testing.T) {
 	err2 := NewErr(errors.New("test 2"), "My error message 2", nil, 20, nil)
 	err1 := NewErr(errors.New("test 1"), "My error message 1", nil, 10, &err2)
@@ -579,6 +591,37 @@ func TestErr_ToError_Empty(t *testing.T) {
 
 // ----------------------------------------------------------------------------
 //
-// Tests of ErrFromJSON()
+// Tests of Wrap()
 //
 // ----------------------------------------------------------------------------
+
+// func TestErr_Wrap(t *testing.T) {
+// }
+
+// ----------------------------------------------------------------------------
+//
+// Tests of FromError()
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_FromError(t *testing.T) {
+	expected := Err{
+		Value:   errors.New("test"),
+		Code:    0,
+		Msg:     "",
+		Details: nil,
+		Prev:    nil,
+	}
+
+	err := FromError(errors.New("test"))
+
+	assert.Equal(t, err.Value, expected.Value)
+	assert.Equal(t, err.Code, expected.Code)
+	assert.Equal(t, err.Msg, expected.Msg)
+	assert.Equal(t, err.Details, expected.Details)
+	assert.Equal(t, err.Prev, expected.Prev)
+}
+
+func TestErr_FromError_Empty(t *testing.T) {
+	assert.Equal(t, FromError(nil), EmptyErr())
+}

@@ -2,4 +2,5 @@
 
 - [x] Add benchmarks
 - [x] Add examples
-- [ ] Document the `README.md`
+- [x] Document the `README.md`
+- [ ] 

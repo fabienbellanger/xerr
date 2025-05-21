@@ -43,12 +43,18 @@ type Err struct {
 //	}
 //	details := Person{Name: "John", Age: 30}
 //	err := NewErr(myError, "My error message", details, nil)
-func NewErr(value error, msg string, details any, code int, next *Err) Err {
+func NewErr(value error, msg string, details any, code int, prev *Err) Err {
 	if value == nil {
 		return EmptyErr()
 	}
 
 	_, file, line, _ := runtime.Caller(1)
+
+	// if e, ok := err.(Err); ok {
+	// 		prev = e.Clone()
+	// 	} else if e, ok := err.(*Err); ok {
+	// 		prev = e.Clone()
+	// 	}
 
 	return Err{
 		Value:     value,
@@ -58,7 +64,7 @@ func NewErr(value error, msg string, details any, code int, next *Err) Err {
 		File:      file,
 		Line:      line,
 		Timestamp: time.Now().UnixMicro(),
-		Prev:      next.Clone(),
+		Prev:      prev.Clone(),
 	}
 }
 
@@ -180,6 +186,34 @@ func (e *Err) Unwrap() error {
 	return nil
 }
 
+// Wrap creates a new Err struct that wraps an existing error with additional context.
+//
+// It takes an error, a message, details, and a code as input.
+// If the error is already an Err struct, it clones it to preserve the previous error chain.
+// If the error is not an Err struct, it creates a new Err struct with the provided details.
+// TODO: Review and add tests for this function
+// func Wrap(err error, msg string, details any, code int) Err {
+// 	var prev *Err
+// 	if e, ok := err.(Err); ok {
+// 		prev = e.Clone()
+// 	} else if e, ok := err.(*Err); ok {
+// 		prev = e.Clone()
+// 	}
+// 	return NewErr(err, msg, details, code, prev)
+// }
+
+// FromError creates a new Err struct from an existing error.
+//
+// If the provided error is nil, it returns an empty Err struct.
+// If the error is not nil, it creates a new Err struct with the error value,
+// an empty message, and no details or code.
+func FromError(err error) Err {
+	if err == nil {
+		return EmptyErr()
+	}
+	return NewErr(err, "", nil, 0, nil)
+}
+
 // JSON converts the Err struct into a JSON representation.
 func (e Err) JSON() ([]byte, Err) {
 	if e.IsEmpty() {
@@ -237,14 +271,6 @@ func (e Err) MarshalJSON() ([]byte, error) {
 		Alias:     (Alias)(e),
 	})
 }
-
-// ErrFromJSON converts a JSON byte array into an Err struct.
-// func ErrFromJSON(data []byte) (Err, error) {
-// 	var e Err
-// 	err := json.Unmarshal(data, &e)
-
-// 	return e, err
-// }
 
 // ValueEq checks if the Value field of the Err struct is equal to
 // the Value field of another Err struct.
