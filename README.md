@@ -86,14 +86,16 @@ make bench
 Results:
 ```
 goos: darwin
-goarch: arm64
+goarch: amd64
 pkg: github.com/fabienbellanger/xerr
-cpu: Apple M3
-BenchmarkErr_Error-8                     2832218               422.7 ns/op           264 B/op          3 allocs/op
-BenchmarkErr_JSON_Simple-8                549771              2137 ns/op             720 B/op          5 allocs/op
-BenchmarkErr_JSON_WithDetails-8           448258              2639 ns/op             752 B/op          7 allocs/op
-BenchmarkErr_JSON_NestedErrors-8           75326             15828 ns/op            3989 B/op         14 allocs/op
-BenchmarkErr_Is_Simple-8                100000000               11.65 ns/op            0 B/op          0 allocs/op
-BenchmarkErr_Is_NestedErrors-8          55479355                22.90 ns/op            0 B/op          0 allocs/op
-BenchmarkErr_Clone-8                    11963326               103.4 ns/op           288 B/op          3 allocs/op
+cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+BenchmarkErr_Error-12                    2479927               506.7 ns/op           264 B/op          3 allocs/op
+BenchmarkErr_JSON_Simple-12               559191              2186 ns/op             688 B/op          5 allocs/op
+BenchmarkErr_JSON_WithDetails-12          465482              2469 ns/op             720 B/op          7 allocs/op
+BenchmarkErr_JSON_NestedErrors-12          83658             14154 ns/op            3989 B/op         14 allocs/op
+BenchmarkErr_Is_Simple-12               100000000               10.34 ns/op            0 B/op          0 allocs/op
+BenchmarkErr_Is_NestedErrors-12         57608085                20.82 ns/op            0 B/op          0 allocs/op
+BenchmarkErr_Clone_4-12                  8457126               153.7 ns/op           384 B/op          4 allocs/op
+BenchmarkErr_Clone_8-12                  4106058               285.3 ns/op           768 B/op          8 allocs/op
+BenchmarkErr_Clone_16-12                 2079298               575.0 ns/op          1536 B/op         16 allocs/op
 ```

@@ -3,7 +3,6 @@ package xerr
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"testing"
 	"time"
@@ -33,7 +32,7 @@ func TestErr_NewErr_SimpleError(t *testing.T) {
 	assert.Equal(t, "My error message", err.Msg)
 	assert.Equal(t, details, err.Details)
 	assert.True(t, strings.Contains(err.File, "error_test.go"))
-	assert.Equal(t, 29, err.Line)
+	assert.Equal(t, 28, err.Line)
 	assert.Nil(t, err.Prev)
 }
 
@@ -46,14 +45,14 @@ func TestErr_NewErr_NestedErrors(t *testing.T) {
 	assert.Equal(t, "My error message 1", err1.Msg)
 	assert.Nil(t, err1.Details)
 	assert.True(t, strings.Contains(err1.File, "error_test.go"))
-	assert.Equal(t, 42, err1.Line)
+	assert.Equal(t, 41, err1.Line)
 
 	assert.Equal(t, errors.New("test 2"), err2.Value)
 	assert.Equal(t, 20, err2.Code)
 	assert.Equal(t, "My error message 2", err2.Msg)
 	assert.Nil(t, err2.Details)
 	assert.True(t, strings.Contains(err2.File, "error_test.go"))
-	assert.Equal(t, 41, err2.Line)
+	assert.Equal(t, 40, err2.Line)
 }
 
 func TestErr_NewErr_EmptyError(t *testing.T) {
@@ -334,7 +333,6 @@ func TestErr_JSON_Simple(t *testing.T) {
 	expected := []byte(`{"value":"test","details":null,"timestamp":"` + time.UnixMicro(now).Format(time.RFC3339Nano) +
 		`","code":404,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
-	log.Printf("%s\n", result)
 
 	assert.Equal(t, EmptyErr(), err)
 	assert.Equal(t, expected, result)
