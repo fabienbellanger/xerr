@@ -20,7 +20,7 @@ import (
 // timestamp, and a pointer to a previous error.
 type Err struct {
 	Value     error  `json:"value"`
-	Code      int    `json:"code"`
+	Code      int    `json:"code,omitzero"`
 	Msg       string `json:"msg"`
 	Details   any    `json:"details"`
 	File      string `json:"file"`

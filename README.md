@@ -7,6 +7,75 @@
 
 > xerr is a Go package that provides extended error handling capabilities, including error wrapping, stack traces, error codes, and additional context information to make debugging and error management easier in Go applications.
 
+## Installation
+
+In your project:
+```bash
+go get github.com/fabienbellanger/xerr
+```
+
+## Examples
+
+### Simple error
+```go
+package main
+
+import (
+	"errors"
+	"log"
+
+	"github.com/fabienbellanger/xerr"
+)
+
+func divide(a, b int) (int, xerr.Err) {
+	if b == 0 {
+		return 0, xerr.NewErr(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 0, nil)
+	}
+	return a / b, xerr.EmptyErr()
+}
+
+func main() {
+    // Without error
+	d, err := divide(10, 10)
+	if err.IsEmpty() {
+		log.Printf("No error: %d\n", d)
+	}
+
+    // With error
+	_, err := divide(10, 0)
+	if err.IsError() {
+		log.Printf("Error: %v\n", err)
+	}
+}
+```
+
+### Nested error
+```go
+package main
+
+import (
+	"errors"
+	"log"
+
+	"github.com/fabienbellanger/xerr"
+)
+
+func divide(a, b int) (int, xerr.Err) {
+	if b == 0 {
+		return 0, xerr.NewErr(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 20, nil)
+	}
+	return a / b, xerr.EmptyErr()
+}
+
+func main() {
+    _, err := divide(10, 0)
+	if err.IsError() {
+		log.Printf("Error: %v\n", 
+            xerr.NewErr(errors.New("error in main()"), "Error in main()", [2]int{10, 0}, 10, &err))
+	}
+}
+```
+
 ## Benchmarks
 
 Run:

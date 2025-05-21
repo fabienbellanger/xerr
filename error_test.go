@@ -3,6 +3,7 @@ package xerr
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -32,7 +33,7 @@ func TestErr_NewErr_SimpleError(t *testing.T) {
 	assert.Equal(t, "My error message", err.Msg)
 	assert.Equal(t, details, err.Details)
 	assert.True(t, strings.Contains(err.File, "error_test.go"))
-	assert.Equal(t, 28, err.Line)
+	assert.Equal(t, 29, err.Line)
 	assert.Nil(t, err.Prev)
 }
 
@@ -45,14 +46,14 @@ func TestErr_NewErr_NestedErrors(t *testing.T) {
 	assert.Equal(t, "My error message 1", err1.Msg)
 	assert.Nil(t, err1.Details)
 	assert.True(t, strings.Contains(err1.File, "error_test.go"))
-	assert.Equal(t, 41, err1.Line)
+	assert.Equal(t, 42, err1.Line)
 
 	assert.Equal(t, errors.New("test 2"), err2.Value)
 	assert.Equal(t, 20, err2.Code)
 	assert.Equal(t, "My error message 2", err2.Msg)
 	assert.Nil(t, err2.Details)
 	assert.True(t, strings.Contains(err2.File, "error_test.go"))
-	assert.Equal(t, 40, err2.Line)
+	assert.Equal(t, 41, err2.Line)
 }
 
 func TestErr_NewErr_EmptyError(t *testing.T) {
@@ -333,6 +334,7 @@ func TestErr_JSON_Simple(t *testing.T) {
 	expected := []byte(`{"value":"test","details":null,"timestamp":"` + time.UnixMicro(now).Format(time.RFC3339Nano) +
 		`","code":404,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
+	log.Printf("%s\n", result)
 
 	assert.Equal(t, EmptyErr(), err)
 	assert.Equal(t, expected, result)
@@ -360,7 +362,7 @@ func TestErr_JSON_Detail(t *testing.T) {
 
 	expected := []byte(`{"value":"test","details":{"name":"John Doe","age":23},"timestamp":"` +
 		time.UnixMicro(now).Format(time.RFC3339Nano) +
-		`","code":0,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
+		`","msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
 	assert.Equal(t, EmptyErr(), err)
@@ -390,9 +392,9 @@ func TestErr_JSON_NestedErrors(t *testing.T) {
 
 	expected := []byte(`{"value":"test","details":null,"timestamp":"` +
 		time.UnixMicro(now).Format(time.RFC3339Nano) +
-		`","code":0,"msg":"My message","file":"error_test.go","line":26,"prev":{"value":"test 2","details":null,"timestamp":"` +
+		`","msg":"My message","file":"error_test.go","line":26,"prev":{"value":"test 2","details":null,"timestamp":"` +
 		time.UnixMicro(now).Format(time.RFC3339Nano) +
-		`","code":0,"msg":"My message 2","file":"error_test.go","line":87,"prev":null}}`)
+		`","msg":"My message 2","file":"error_test.go","line":87,"prev":null}}`)
 	result, err := e.JSON()
 
 	assert.Equal(t, EmptyErr(), err)
@@ -433,7 +435,7 @@ func TestErr_JSON_DetailError(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_ValueEq(t *testing.T) {
-	var myErr = errors.New("test 1")
+	myErr := errors.New("test 1")
 
 	err1 := NewErr(myErr, "My error message 1", nil, 0, nil)
 	err2 := NewErr(myErr, "My error message 2", nil, 0, nil)
@@ -443,8 +445,8 @@ func TestErr_ValueEq(t *testing.T) {
 }
 
 func TestErr_ValueEq_WithDifferentValues(t *testing.T) {
-	var myErr1 = errors.New("test 1")
-	var myErr2 = errors.New("test 2")
+	myErr1 := errors.New("test 1")
+	myErr2 := errors.New("test 2")
 
 	err1 := NewErr(myErr1, "My error message 1", nil, 0, nil)
 	err2 := NewErr(myErr1, "My error message 2", nil, 0, nil)
@@ -463,8 +465,8 @@ func TestErr_ValueEq_WithDifferentValues(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_Eq_Simple(t *testing.T) {
-	var myErr1 = errors.New("test 1")
-	var myErr2 = errors.New("test 2")
+	myErr1 := errors.New("test 1")
+	myErr2 := errors.New("test 2")
 
 	err := NewErr(myErr2, "My error message", nil, 200, nil)
 	err1 := NewErr(myErr1, "My error message 1", nil, 300, &err)
@@ -475,9 +477,9 @@ func TestErr_Eq_Simple(t *testing.T) {
 }
 
 func TestErr_Eq_WithDifferentValues(t *testing.T) {
-	var myErr1 = errors.New("test 1")
-	var myErr2 = errors.New("test 2")
-	var myErr3 = errors.New("test 3")
+	myErr1 := errors.New("test 1")
+	myErr2 := errors.New("test 2")
+	myErr3 := errors.New("test 3")
 
 	err := NewErr(myErr2, "My error message", nil, 0, nil)
 	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
@@ -491,9 +493,9 @@ func TestErr_Eq_WithDifferentValues(t *testing.T) {
 }
 
 func TestErr_Eq_WithDifferentPrevValues(t *testing.T) {
-	var myErr1 = errors.New("test 1")
-	var myErr2 = errors.New("test 2")
-	var myErr3 = errors.New("test 3")
+	myErr1 := errors.New("test 1")
+	myErr2 := errors.New("test 2")
+	myErr3 := errors.New("test 3")
 
 	err := NewErr(myErr2, "My error message", nil, 0, nil)
 	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
@@ -520,7 +522,7 @@ func TestErr_Clone_Empty(t *testing.T) {
 }
 
 func TestErr_Clone_Simple(t *testing.T) {
-	var myErr = errors.New("test 1")
+	myErr := errors.New("test 1")
 	err := NewErr(myErr, "My error message 1", nil, 0, nil)
 	clone := err.Clone()
 
@@ -528,10 +530,22 @@ func TestErr_Clone_Simple(t *testing.T) {
 }
 
 func TestErr_Clone_NestedErrors(t *testing.T) {
-	var myErr1 = errors.New("test 1")
-	var myErr2 = errors.New("test 2")
+	myErr1 := errors.New("test 1")
+	myErr2 := errors.New("test 2")
 
 	err := NewErr(myErr2, "My error message", nil, 0, nil)
+	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
+	clone := err1.Clone()
+
+	assert.Equal(t, err1, *clone)
+}
+
+func TestErr_Clone_NestedErrors_Empty(t *testing.T) {
+	myErr1 := errors.New("test 1")
+	myErr2 := errors.New("test 2")
+	empty := EmptyErr()
+
+	err := NewErr(myErr2, "My error message", nil, 0, &empty)
 	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
 	clone := err1.Clone()
 
