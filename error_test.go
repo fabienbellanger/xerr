@@ -495,6 +495,19 @@ func TestErr_JSON_WithStackTrace_Empty(t *testing.T) {
 	assert.False(t, strings.Contains(string(result), `"stack_trace":"`))
 }
 
+func TestErr_JSON_WithNilValue(t *testing.T) {
+	e := Err{
+		Value:   nil,
+		Code:    0,
+		Msg:     "My error message",
+		Details: nil,
+	}
+	result, err := e.JSON(true)
+
+	assert.False(t, err.IsError())
+	assert.Empty(t, result)
+}
+
 // ----------------------------------------------------------------------------
 //
 // Tests of ValueEq()
