@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Change
 
-- [BREAKING] Change `NewErr` function to add the error code
+- [BREAKING] Change `NewErr` function to add the error code to `New`
 
 ## `0.2.0` (2025-05-06) [CURRENT]
 

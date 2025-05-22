@@ -29,9 +29,9 @@ import (
 
 func divide(a, b int) (int, xerr.Err) {
 	if b == 0 {
-		return 0, xerr.NewErr(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 0, nil)
+		return 0, xerr.New(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 0, nil)
 	}
-	return a / b, xerr.EmptyErr()
+	return a / b, xerr.Empty()
 }
 
 func main() {
@@ -62,16 +62,16 @@ import (
 
 func divide(a, b int) (int, xerr.Err) {
 	if b == 0 {
-		return 0, xerr.NewErr(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 20, nil)
+		return 0, xerr.New(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 20, nil)
 	}
-	return a / b, xerr.EmptyErr()
+	return a / b, xerr.Empty()
 }
 
 func main() {
     _, err := divide(10, 0)
 	if err.IsError() {
 		log.Printf("Error: %v\n", 
-            xerr.NewErr(errors.New("error in main()"), "Error in main()", [2]int{10, 0}, 10, &err))
+            xerr.New(errors.New("error in main()"), "Error in main()", [2]int{10, 0}, 10, &err))
 	}
 }
 ```

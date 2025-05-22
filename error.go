@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"time"
 )
 
@@ -19,17 +20,18 @@ import (
 // It includes fields for a message, details, file name, line number,
 // timestamp, and a pointer to a previous error.
 type Err struct {
-	Value     error  `json:"value"`
-	Code      int    `json:"code,omitzero"`
-	Msg       string `json:"msg"`
-	Details   any    `json:"details"`
-	File      string `json:"file"`
-	Line      int    `json:"line"`
-	Timestamp int64  `json:"timestamp"`
-	Prev      *Err   `json:"prev"`
+	Value      error  `json:"value"`
+	Code       int    `json:"code,omitzero"`
+	Msg        string `json:"msg"`
+	Details    any    `json:"details"`
+	File       string `json:"file"`
+	Line       int    `json:"line"`
+	Timestamp  int64  `json:"timestamp"`
+	Prev       *Err   `json:"prev"`
+	StackTrace []byte `json:"-"`
 }
 
-// NewErr creates a new Err struct with the provided error value, message,
+// New creates a new Err struct with the provided error value, message,
 // details, and a pointer to a previous Err struct.
 //
 // The timestamp is set to the current time in microseconds since the epoch.
@@ -42,30 +44,55 @@ type Err struct {
 //	    Age  int    `json:"age"`
 //	}
 //	details := Person{Name: "John", Age: 30}
-//	err := NewErr(myError, "My error message", details, nil)
-func NewErr(value error, msg string, details any, code int, prev *Err) Err {
+//	err := New(myError, "My error message", details, nil)
+func New(value error, msg string, details any, code int, prev *Err) Err {
 	if value == nil {
-		return EmptyErr()
+		return Empty()
 	}
 
 	_, file, line, _ := runtime.Caller(1)
-
-	// if e, ok := err.(Err); ok {
-	// 		prev = e.Clone()
-	// 	} else if e, ok := err.(*Err); ok {
-	// 		prev = e.Clone()
-	// 	}
+	stack := debug.Stack()
 
 	return Err{
-		Value:     value,
-		Code:      code,
-		Msg:       msg,
-		Details:   details,
-		File:      file,
-		Line:      line,
-		Timestamp: time.Now().UnixMicro(),
-		Prev:      prev.Clone(),
+		Value:      value,
+		Code:       code,
+		Msg:        msg,
+		Details:    details,
+		File:       file,
+		Line:       line,
+		Timestamp:  time.Now().UnixMicro(),
+		Prev:       prev.Clone(),
+		StackTrace: stack,
 	}
+}
+
+// NewSimple creates a new Err struct with the provided error value and message.
+//
+// It sets the details to nil, the code to 0, and the previous error to nil.
+func NewSimple(value error, msg string, prev *Err) Err {
+	err := New(value, msg, nil, 0, prev)
+
+	_, file, line, _ := runtime.Caller(1)
+
+	err.File = file
+	err.Line = line
+
+	return err
+}
+
+// Wrap creates a new Err struct that wraps an existing error with additional context.
+//
+// It takes an error, a message, details, and a code as input.
+// If the error is already an Err struct, it clones it to preserve the previous error chain.
+func (e *Err) Wrap(value error, msg string, details any, code int) Err {
+	err := New(value, msg, details, code, e)
+
+	_, file, line, _ := runtime.Caller(1)
+
+	err.File = file
+	err.Line = line
+
+	return err
 }
 
 // Clone creates a deep copy of the Err struct.
@@ -84,19 +111,20 @@ func (e *Err) Clone() *Err {
 	}
 
 	return &Err{
-		Value:     e.Value,
-		Code:      e.Code,
-		Msg:       e.Msg,
-		Details:   e.Details,
-		File:      e.File,
-		Line:      e.Line,
-		Timestamp: e.Timestamp,
-		Prev:      clonedPrev,
+		Value:      e.Value,
+		Code:       e.Code,
+		Msg:        e.Msg,
+		Details:    e.Details,
+		File:       e.File,
+		Line:       e.Line,
+		Timestamp:  e.Timestamp,
+		Prev:       clonedPrev,
+		StackTrace: e.StackTrace,
 	}
 }
 
-// EmptyErr returns an empty Err struct.
-func EmptyErr() Err {
+// Empty returns an empty Err struct.
+func Empty() Err {
 	return Err{}
 }
 
@@ -153,7 +181,7 @@ func (e Err) Error() string {
 //
 //	var myError = errors.New("my error")
 //	details := Person{Name: "John", Age: 30}
-//	err := NewErr(myError, "My error message", details, nil)
+//	err := New(myError, "My error message", details, nil)
 //	if err.Is(myError) {
 //		fmt.Println("The error matches myError")
 //	}
@@ -199,7 +227,7 @@ func (e *Err) Unwrap() error {
 // 	} else if e, ok := err.(*Err); ok {
 // 		prev = e.Clone()
 // 	}
-// 	return NewErr(err, msg, details, code, prev)
+// 	return New(err, msg, details, code, prev)
 // }
 
 // FromError creates a new Err struct from an existing error.
@@ -209,23 +237,23 @@ func (e *Err) Unwrap() error {
 // an empty message, and no details or code.
 func FromError(err error) Err {
 	if err == nil {
-		return EmptyErr()
+		return Empty()
 	}
-	return NewErr(err, "", nil, 0, nil)
+	return New(err, "", nil, 0, nil)
 }
 
 // JSON converts the Err struct into a JSON representation.
 func (e Err) JSON() ([]byte, Err) {
 	if e.IsEmpty() {
-		return []byte{}, EmptyErr()
+		return []byte{}, Empty()
 	}
 
 	s, err := json.Marshal(e)
 	if err != nil {
-		return []byte{}, NewErr(err, "Error when converting Err into JSON", nil, 0, nil)
+		return []byte{}, New(err, "Error when converting Err into JSON", nil, 0, nil)
 	}
 
-	return s, EmptyErr()
+	return s, Empty()
 }
 
 // MarshalJSON implements the json.Marshaler interface for the Err type.
@@ -278,8 +306,8 @@ func (e Err) MarshalJSON() ([]byte, error) {
 // Example:
 //
 //	var myError = errors.New("my error")
-//	err1 := NewErr(myErr, "My error message 1", nil, nil)
-//	err2 := NewErr(myErr, "My error message 2", nil, nil)
+//	err1 := New(myErr, "My error message 1", nil, nil)
+//	err2 := New(myErr, "My error message 2", nil, nil)
 //	println(err1.ValueEq(err2)) // true
 func (e *Err) ValueEq(other Err) bool {
 	return e.Value == other.Value

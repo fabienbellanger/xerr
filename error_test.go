@@ -12,11 +12,11 @@ import (
 
 // ----------------------------------------------------------------------------
 //
-// Tests of NewErr()
+// Tests of New()
 //
 // ----------------------------------------------------------------------------
 
-func TestErr_NewErr_SimpleError(t *testing.T) {
+func TestErr_New_SimpleError(t *testing.T) {
 	details := struct {
 		Name string
 		Age  int
@@ -25,7 +25,7 @@ func TestErr_NewErr_SimpleError(t *testing.T) {
 		Age:  23,
 	}
 
-	err := NewErr(errors.New("test"), "My error message", details, 10, nil)
+	err := New(errors.New("test"), "My error message", details, 10, nil)
 
 	assert.Equal(t, errors.New("test"), err.Value)
 	assert.Equal(t, 10, err.Code)
@@ -36,9 +36,9 @@ func TestErr_NewErr_SimpleError(t *testing.T) {
 	assert.Nil(t, err.Prev)
 }
 
-func TestErr_NewErr_With_Err(t *testing.T) {
-	err2 := NewErr(errors.New("test 2"), "My error message 2", nil, 20, nil)
-	err1 := NewErr(err2, "My error message 1", nil, 10, nil)
+func TestErr_New_With_Err(t *testing.T) {
+	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
+	err1 := New(err2, "My error message 1", nil, 10, nil)
 
 	assert.Equal(t, err2, err1.Value)
 	assert.Equal(t, 10, err1.Code)
@@ -48,9 +48,9 @@ func TestErr_NewErr_With_Err(t *testing.T) {
 	assert.Equal(t, 41, err1.Line)
 }
 
-func TestErr_NewErr_NestedErrors(t *testing.T) {
-	err2 := NewErr(errors.New("test 2"), "My error message 2", nil, 20, nil)
-	err1 := NewErr(errors.New("test 1"), "My error message 1", nil, 10, &err2)
+func TestErr_New_NestedErrors(t *testing.T) {
+	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
+	err1 := New(errors.New("test 1"), "My error message 1", nil, 10, &err2)
 
 	assert.Equal(t, errors.New("test 1"), err1.Value)
 	assert.Equal(t, 10, err1.Code)
@@ -67,20 +67,61 @@ func TestErr_NewErr_NestedErrors(t *testing.T) {
 	assert.Equal(t, 52, err2.Line)
 }
 
-func TestErr_NewErr_EmptyError(t *testing.T) {
-	err := NewErr(nil, "My error message", nil, 0, nil)
+func TestErr_New_Emptyor(t *testing.T) {
+	err := New(nil, "My error message", nil, 0, nil)
 
 	assert.Equal(t, Err{}, err)
 }
 
 // ----------------------------------------------------------------------------
 //
-// Tests of EmptyErr()
+// Tests of NewSimple()
 //
 // ----------------------------------------------------------------------------
 
-func TestErr_EmptyErr(t *testing.T) {
-	assert.Equal(t, Err{}, EmptyErr())
+func TestErr_NewSimple(t *testing.T) {
+	err := NewSimple(errors.New("test"), "My error message", nil)
+	assert.Equal(t, errors.New("test"), err.Value)
+	assert.Equal(t, 0, err.Code)
+	assert.Equal(t, "My error message", err.Msg)
+	assert.Nil(t, err.Details)
+	assert.Nil(t, err.Prev)
+}
+
+// ----------------------------------------------------------------------------
+//
+// Tests of Wrap()
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_Wrap(t *testing.T) {
+	err := NewSimple(errors.New("test"), "My error message", nil)
+	wrappedErr := err.Wrap(errors.New("wrapped error"), "Wrapped message", nil, 100)
+	expected := Err{
+		Value:   errors.New("wrapped error"),
+		Code:    100,
+		Msg:     "Wrapped message",
+		Details: nil,
+		Prev:    &err,
+	}
+
+	assert.Equal(t, expected.Value, wrappedErr.Value)
+	assert.Equal(t, expected.Code, wrappedErr.Code)
+	assert.Equal(t, expected.Msg, wrappedErr.Msg)
+	assert.Equal(t, expected.Details, wrappedErr.Details)
+	assert.True(t, strings.Contains(wrappedErr.File, "error_test.go"))
+	assert.Equal(t, 99, wrappedErr.Line)
+	assert.Equal(t, expected.Prev, wrappedErr.Prev)
+}
+
+// ----------------------------------------------------------------------------
+//
+// Tests of Empty()
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_Empty(t *testing.T) {
+	assert.Equal(t, Err{}, Empty())
 }
 
 // ----------------------------------------------------------------------------
@@ -90,10 +131,10 @@ func TestErr_EmptyErr(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_IsEmpty(t *testing.T) {
-	err := EmptyErr()
+	err := Empty()
 	assert.True(t, err.IsEmpty())
 
-	err = NewErr(errors.New("test"), "My error message", nil, 0, nil)
+	err = New(errors.New("test"), "My error message", nil, 0, nil)
 	assert.False(t, err.IsEmpty())
 }
 
@@ -104,10 +145,10 @@ func TestErr_IsEmpty(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_IsError(t *testing.T) {
-	err := EmptyErr()
+	err := Empty()
 	assert.False(t, err.IsError())
 
-	err = NewErr(errors.New("test"), "My error message", nil, 0, nil)
+	err = New(errors.New("test"), "My error message", nil, 0, nil)
 	assert.True(t, err.IsError())
 }
 
@@ -118,7 +159,7 @@ func TestErr_IsError(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_Error_Empty(t *testing.T) {
-	err := EmptyErr()
+	err := Empty()
 
 	assert.Equal(t, "", err.Error())
 }
@@ -238,7 +279,7 @@ func TestErr_Error_WithMsg(t *testing.T) {
 
 func TestErr_Is(t *testing.T) {
 	myErr := errors.New("my error")
-	err := NewErr(myErr, "My error message", nil, 0, nil)
+	err := New(myErr, "My error message", nil, 0, nil)
 
 	assert.True(t, err.Is(myErr))
 }
@@ -247,9 +288,9 @@ func TestErr_Is_NestedErrors(t *testing.T) {
 	myErr := errors.New("my error")
 	myErr2 := errors.New("my error 2")
 	myErr3 := errors.New("my error 3")
-	err3 := NewErr(myErr3, "My error message 3", nil, 0, nil)
-	err2 := NewErr(myErr2, "My error message 2", nil, 0, &err3)
-	err := NewErr(myErr, "My error message", nil, 0, &err2)
+	err3 := New(myErr3, "My error message 3", nil, 0, nil)
+	err2 := New(myErr2, "My error message 2", nil, 0, &err3)
+	err := New(myErr, "My error message", nil, 0, &err2)
 
 	assert.True(t, err.Is(myErr))
 	assert.True(t, err.Is(myErr2))
@@ -259,7 +300,7 @@ func TestErr_Is_NestedErrors(t *testing.T) {
 func TestErr_Is_False(t *testing.T) {
 	myErr := errors.New("my error")
 	myErr2 := errors.New("my error 2")
-	err := NewErr(myErr, "My error message", nil, 0, nil)
+	err := New(myErr, "My error message", nil, 0, nil)
 
 	assert.True(t, err.Is(myErr))
 	assert.False(t, err.Is(myErr2))
@@ -319,13 +360,13 @@ func TestUnwrapEmpty(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_JSON_Empty(t *testing.T) {
-	e := EmptyErr()
+	e := Empty()
 	expected := []byte("")
 	result, err := e.JSON()
 
 	fmt.Printf("%s\n", result)
 
-	assert.Equal(t, EmptyErr(), err)
+	assert.Equal(t, Empty(), err)
 	assert.Equal(t, expected, result)
 }
 
@@ -346,7 +387,7 @@ func TestErr_JSON_Simple(t *testing.T) {
 		`","code":404,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, EmptyErr(), err)
+	assert.Equal(t, Empty(), err)
 	assert.Equal(t, expected, result)
 }
 
@@ -375,7 +416,7 @@ func TestErr_JSON_Detail(t *testing.T) {
 		`","msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, EmptyErr(), err)
+	assert.Equal(t, Empty(), err)
 	assert.Equal(t, expected, result)
 }
 
@@ -407,7 +448,7 @@ func TestErr_JSON_NestedErrors(t *testing.T) {
 		`","msg":"My message 2","file":"error_test.go","line":87,"prev":null}}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, EmptyErr(), err)
+	assert.Equal(t, Empty(), err)
 	assert.Equal(t, expected, result)
 }
 
@@ -434,7 +475,7 @@ func TestErr_JSON_DetailError(t *testing.T) {
 		`","code":10,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, EmptyErr(), err)
+	assert.Equal(t, Empty(), err)
 	assert.Equal(t, expected, result)
 }
 
@@ -447,8 +488,8 @@ func TestErr_JSON_DetailError(t *testing.T) {
 func TestErr_ValueEq(t *testing.T) {
 	myErr := errors.New("test 1")
 
-	err1 := NewErr(myErr, "My error message 1", nil, 0, nil)
-	err2 := NewErr(myErr, "My error message 2", nil, 0, nil)
+	err1 := New(myErr, "My error message 1", nil, 0, nil)
+	err2 := New(myErr, "My error message 2", nil, 0, nil)
 
 	assert.True(t, err1.ValueEq(err2))
 	assert.True(t, err2.ValueEq(err1))
@@ -458,8 +499,8 @@ func TestErr_ValueEq_WithDifferentValues(t *testing.T) {
 	myErr1 := errors.New("test 1")
 	myErr2 := errors.New("test 2")
 
-	err1 := NewErr(myErr1, "My error message 1", nil, 0, nil)
-	err2 := NewErr(myErr1, "My error message 2", nil, 0, nil)
+	err1 := New(myErr1, "My error message 1", nil, 0, nil)
+	err2 := New(myErr1, "My error message 2", nil, 0, nil)
 
 	// With different values
 	err1.Value = myErr2
@@ -478,9 +519,9 @@ func TestErr_Eq_Simple(t *testing.T) {
 	myErr1 := errors.New("test 1")
 	myErr2 := errors.New("test 2")
 
-	err := NewErr(myErr2, "My error message", nil, 200, nil)
-	err1 := NewErr(myErr1, "My error message 1", nil, 300, &err)
-	err2 := NewErr(myErr1, "My error message 2", nil, 400, &err)
+	err := New(myErr2, "My error message", nil, 200, nil)
+	err1 := New(myErr1, "My error message 1", nil, 300, &err)
+	err2 := New(myErr1, "My error message 2", nil, 400, &err)
 
 	assert.True(t, err1.Eq(err2))
 	assert.True(t, err2.Eq(err1))
@@ -491,9 +532,9 @@ func TestErr_Eq_WithDifferentValues(t *testing.T) {
 	myErr2 := errors.New("test 2")
 	myErr3 := errors.New("test 3")
 
-	err := NewErr(myErr2, "My error message", nil, 0, nil)
-	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
-	err2 := NewErr(myErr1, "My error message 2", nil, 0, &err)
+	err := New(myErr2, "My error message", nil, 0, nil)
+	err1 := New(myErr1, "My error message 1", nil, 0, &err)
+	err2 := New(myErr1, "My error message 2", nil, 0, &err)
 
 	// With different values for value
 	err1.Value = myErr3
@@ -507,9 +548,9 @@ func TestErr_Eq_WithDifferentPrevValues(t *testing.T) {
 	myErr2 := errors.New("test 2")
 	myErr3 := errors.New("test 3")
 
-	err := NewErr(myErr2, "My error message", nil, 0, nil)
-	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
-	err2 := NewErr(myErr1, "My error message 2", nil, 0, &err)
+	err := New(myErr2, "My error message", nil, 0, nil)
+	err1 := New(myErr1, "My error message 1", nil, 0, &err)
+	err2 := New(myErr1, "My error message 2", nil, 0, &err)
 
 	// With different values for prev
 	err1.Prev.Value = myErr3
@@ -525,7 +566,7 @@ func TestErr_Eq_WithDifferentPrevValues(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_Clone_Empty(t *testing.T) {
-	err := EmptyErr()
+	err := Empty()
 	clone := err.Clone()
 
 	assert.Equal(t, err, *clone)
@@ -533,7 +574,7 @@ func TestErr_Clone_Empty(t *testing.T) {
 
 func TestErr_Clone_Simple(t *testing.T) {
 	myErr := errors.New("test 1")
-	err := NewErr(myErr, "My error message 1", nil, 0, nil)
+	err := New(myErr, "My error message 1", nil, 0, nil)
 	clone := err.Clone()
 
 	assert.Equal(t, err, *clone)
@@ -543,8 +584,8 @@ func TestErr_Clone_NestedErrors(t *testing.T) {
 	myErr1 := errors.New("test 1")
 	myErr2 := errors.New("test 2")
 
-	err := NewErr(myErr2, "My error message", nil, 0, nil)
-	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
+	err := New(myErr2, "My error message", nil, 0, nil)
+	err1 := New(myErr1, "My error message 1", nil, 0, &err)
 	clone := err1.Clone()
 
 	assert.Equal(t, err1, *clone)
@@ -553,10 +594,10 @@ func TestErr_Clone_NestedErrors(t *testing.T) {
 func TestErr_Clone_NestedErrors_Empty(t *testing.T) {
 	myErr1 := errors.New("test 1")
 	myErr2 := errors.New("test 2")
-	empty := EmptyErr()
+	empty := Empty()
 
-	err := NewErr(myErr2, "My error message", nil, 0, &empty)
-	err1 := NewErr(myErr1, "My error message 1", nil, 0, &err)
+	err := New(myErr2, "My error message", nil, 0, &empty)
+	err1 := New(myErr1, "My error message 1", nil, 0, &err)
 	clone := err1.Clone()
 
 	assert.Equal(t, err1, *clone)
@@ -584,7 +625,7 @@ func TestErr_ToError(t *testing.T) {
 }
 
 func TestErr_ToError_Empty(t *testing.T) {
-	err := EmptyErr()
+	err := Empty()
 
 	assert.Equal(t, err.ToError(), nil)
 }
@@ -623,5 +664,5 @@ func TestErr_FromError(t *testing.T) {
 }
 
 func TestErr_FromError_Empty(t *testing.T) {
-	assert.Equal(t, FromError(nil), EmptyErr())
+	assert.Equal(t, FromError(nil), Empty())
 }
