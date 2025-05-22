@@ -479,6 +479,22 @@ func TestErr_JSON_DetailError(t *testing.T) {
 	assert.Equal(t, expected, result)
 }
 
+func TestErr_JSON_WithStackTrace(t *testing.T) {
+	e := New(errors.New("test"), "My error message", nil, 0, nil)
+	result, err := e.JSON(true)
+
+	assert.False(t, err.IsError())
+	assert.True(t, strings.Contains(string(result), `"stack_trace":"`))
+}
+
+func TestErr_JSON_WithStackTrace_Empty(t *testing.T) {
+	e := Empty()
+	result, err := e.JSON(true)
+
+	assert.False(t, err.IsError())
+	assert.False(t, strings.Contains(string(result), `"stack_trace":"`))
+}
+
 // ----------------------------------------------------------------------------
 //
 // Tests of ValueEq()

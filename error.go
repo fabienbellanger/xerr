@@ -28,7 +28,7 @@ type Err struct {
 	Line       int    `json:"line"`
 	Timestamp  int64  `json:"timestamp"`
 	Prev       *Err   `json:"prev"`
-	StackTrace []byte `json:"-"`
+	StackTrace []byte `json:"stack_trace,omitempty"`
 }
 
 // New creates a new Err struct with the provided error value, message,
@@ -243,9 +243,14 @@ func FromError(err error) Err {
 }
 
 // JSON converts the Err struct into a JSON representation.
-func (e Err) JSON() ([]byte, Err) {
+func (e Err) JSON(stackTrace ...bool) ([]byte, Err) {
 	if e.IsEmpty() {
 		return []byte{}, Empty()
+	}
+
+	if len(stackTrace) == 0 || !stackTrace[0] {
+		// Disable the stack trace in the JSON output
+		e.StackTrace = nil
 	}
 
 	s, err := json.Marshal(e)
@@ -270,9 +275,10 @@ func (e Err) MarshalJSON() ([]byte, error) {
 	type Alias Err // Use an alias to avoid infinite recursion
 
 	return json.Marshal(&struct {
-		Value     string    `json:"value"`
-		Details   any       `json:"details"`
-		Timestamp time.Time `json:"timestamp"`
+		Value      string    `json:"value"`
+		Details    any       `json:"details"`
+		Timestamp  time.Time `json:"timestamp"`
+		StackTrace string    `json:"stack_trace,omitempty"`
 		Alias
 	}{
 		Value: func() string {
@@ -295,8 +301,9 @@ func (e Err) MarshalJSON() ([]byte, error) {
 
 			return e.Details
 		}(),
-		Timestamp: time.UnixMicro(e.Timestamp),
-		Alias:     (Alias)(e),
+		Timestamp:  time.UnixMicro(e.Timestamp),
+		StackTrace: string(e.StackTrace),
+		Alias:      (Alias)(e),
 	})
 }
 
