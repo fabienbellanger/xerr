@@ -38,9 +38,9 @@ func TestErr_New_SimpleError(t *testing.T) {
 
 func TestErr_New_With_Err(t *testing.T) {
 	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
-	err1 := New(err2, "My error message 1", nil, 10, nil)
+	err1 := New(&err2, "My error message 1", nil, 10, nil)
 
-	assert.Equal(t, err2, err1.Value)
+	assert.Equal(t, &err2, err1.Value)
 	assert.Equal(t, 10, err1.Code)
 	assert.Equal(t, "My error message 1", err1.Msg)
 	assert.Nil(t, err1.Details)
@@ -376,7 +376,7 @@ func TestUnwrap(t *testing.T) {
 		Prev:      &err2,
 	}
 
-	assert.Equal(t, err.Unwrap(), err2)
+	assert.Equal(t, err.Unwrap(), &err2)
 }
 
 func TestUnwrapEmpty(t *testing.T) {

@@ -141,16 +141,16 @@ func Empty() Err {
 }
 
 // IsEmpty checks if the Err struct is empty, meaning it has no error value.
-func (e Err) IsEmpty() bool {
+func (e *Err) IsEmpty() bool {
 	return e.Value == nil
 }
 
 // IsError checks if the Err struct contains an error value.
-func (e Err) IsError() bool {
+func (e *Err) IsError() bool {
 	return e.Value != nil
 }
 
-func (e Err) Error() string {
+func (e *Err) Error() string {
 	if e.IsEmpty() {
 		return ""
 	}
@@ -197,7 +197,7 @@ func (e Err) Error() string {
 //	if err.Is(myError) {
 //		fmt.Println("The error matches myError")
 //	}
-func (e Err) Is(err error) bool {
+func (e *Err) Is(err error) bool {
 	if errors.Is(e.Value, err) {
 		return true
 	}
@@ -217,11 +217,11 @@ func (e Err) Is(err error) bool {
 //
 // This method is used to retrieve the underlying error that caused the current error.
 // It is part of the error wrapping mechanism in Go.
-// The Unwrap method allows you to access the original error that was wrapped
+// The Unwrap method allows you to access the original error wrapped
 // in the Err struct, enabling you to inspect or handle it as needed.
 func (e *Err) Unwrap() error {
 	if e.Prev != nil {
-		return *e.Prev
+		return e.Prev
 	}
 	return nil
 }
@@ -255,7 +255,7 @@ func FromError(err error) Err {
 }
 
 // JSON converts the Err struct into a JSON representation.
-func (e Err) JSON(stackTrace ...bool) ([]byte, Err) {
+func (e *Err) JSON(stackTrace ...bool) ([]byte, Err) {
 	if e.IsEmpty() {
 		return []byte{}, Empty()
 	}
@@ -283,7 +283,7 @@ func (e Err) JSON(stackTrace ...bool) ([]byte, Err) {
 // The function returns the JSON representation of the Err struct.
 //
 // If the Value field is nil, it returns an empty string for the Value field in the JSON output.
-func (e Err) MarshalJSON() ([]byte, error) {
+func (e *Err) MarshalJSON() ([]byte, error) {
 	type Alias Err // Use an alias to avoid infinite recursion
 
 	return json.Marshal(&struct {
@@ -315,7 +315,7 @@ func (e Err) MarshalJSON() ([]byte, error) {
 		}(),
 		Timestamp:  time.UnixMicro(e.Timestamp),
 		StackTrace: string(e.StackTrace),
-		Alias:      (Alias)(e),
+		Alias:      (Alias)(*e),
 	})
 }
 
@@ -329,19 +329,19 @@ func (e Err) MarshalJSON() ([]byte, error) {
 //	err2 := New(myErr, "My error message 2", nil, nil)
 //	println(err1.ValueEq(err2)) // true
 func (e *Err) ValueEq(other Err) bool {
-	return e.Value == other.Value
+	return errors.Is(e.Value, other.Value)
 }
 
 // Eq checks if the Err struct is equal to another Err struct only by comparing
 // the Value field and the previous errors in the chain.
 func (e *Err) Eq(other Err) bool {
-	if e.Value != other.Value {
+	if !errors.Is(e.Value, other.Value) {
 		return false
 	}
 
 	prev := e.Prev
 	for !(prev == nil) {
-		if prev.Value != other.Prev.Value {
+		if !errors.Is(prev.Value, other.Prev.Value) {
 			return false
 		}
 
