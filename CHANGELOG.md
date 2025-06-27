@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+## [Unreleased]
+
+### Changed
+
+- [Breaking] Apply good practice: Struct Err has methods on both value and pointer receivers. All methods now require a pointer receiver.
+
 ## `0.4.0` (2025-06-27) [CURRENT]
 
 ### Added
