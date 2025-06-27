@@ -73,6 +73,17 @@ func TestErr_New_Emptyor(t *testing.T) {
 	assert.Equal(t, Err{}, err)
 }
 
+func TestErr_New_WithSkip(t *testing.T) {
+	err := New(errors.New("test"), "My error message", nil, 20, nil, 0)
+
+	assert.Equal(t, errors.New("test"), err.Value)
+	assert.Equal(t, 20, err.Code)
+	assert.Equal(t, "My error message", err.Msg)
+	assert.Nil(t, err.Details)
+	assert.True(t, strings.Contains(err.File, "error.go"))
+	assert.Equal(t, 57, err.Line)
+}
+
 // ----------------------------------------------------------------------------
 //
 // Tests of NewSimple()
@@ -86,6 +97,17 @@ func TestErr_NewSimple(t *testing.T) {
 	assert.Equal(t, "My error message", err.Msg)
 	assert.Nil(t, err.Details)
 	assert.Nil(t, err.Prev)
+}
+
+func TestErr_NewSimple_WithSkip(t *testing.T) {
+	err := NewSimple(errors.New("test"), "My error message", nil, 0)
+
+	assert.Equal(t, errors.New("test"), err.Value)
+	assert.Equal(t, 0, err.Code)
+	assert.Equal(t, "My error message", err.Msg)
+	assert.Nil(t, err.Details)
+	assert.True(t, strings.Contains(err.File, "error.go"))
+	assert.Equal(t, 83, err.Line)
 }
 
 // ----------------------------------------------------------------------------
@@ -111,6 +133,26 @@ func TestErr_Wrap(t *testing.T) {
 	assert.Equal(t, expected.Details, wrappedErr.Details)
 	assert.True(t, strings.Contains(wrappedErr.File, "error_test.go"))
 	assert.Equal(t, 99, wrappedErr.Line)
+	assert.Equal(t, expected.Prev, wrappedErr.Prev)
+}
+
+func TestErr_Wrap_WithSkip(t *testing.T) {
+	err := NewSimple(errors.New("test"), "My error message", nil)
+	wrappedErr := err.Wrap(errors.New("wrapped error"), "Wrapped message", nil, 100, 0)
+	expected := Err{
+		Value:   errors.New("wrapped error"),
+		Code:    100,
+		Msg:     "Wrapped message",
+		Details: nil,
+		Prev:    &err,
+	}
+
+	assert.Equal(t, expected.Value, wrappedErr.Value)
+	assert.Equal(t, expected.Code, wrappedErr.Code)
+	assert.Equal(t, expected.Msg, wrappedErr.Msg)
+	assert.Equal(t, expected.Details, wrappedErr.Details)
+	assert.True(t, strings.Contains(wrappedErr.File, "error.go"))
+	assert.Equal(t, 102, wrappedErr.Line)
 	assert.Equal(t, expected.Prev, wrappedErr.Prev)
 }
 

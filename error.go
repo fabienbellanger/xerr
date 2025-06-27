@@ -45,12 +45,16 @@ type Err struct {
 //	}
 //	details := Person{Name: "John", Age: 30}
 //	err := New(myError, "My error message", details, nil)
-func New(value error, msg string, details any, code int, prev *Err) Err {
+func New(value error, msg string, details any, code int, prev *Err, skip ...int) Err {
 	if value == nil {
 		return Empty()
 	}
 
-	_, file, line, _ := runtime.Caller(1)
+	callerSkip := 1
+	if len(skip) == 1 {
+		callerSkip = skip[0]
+	}
+	_, file, line, _ := runtime.Caller(callerSkip)
 	stack := debug.Stack()
 
 	return Err{
@@ -69,10 +73,14 @@ func New(value error, msg string, details any, code int, prev *Err) Err {
 // NewSimple creates a new Err struct with the provided error value and message.
 //
 // It sets the details to nil, the code to 0, and the previous error to nil.
-func NewSimple(value error, msg string, prev *Err) Err {
+func NewSimple(value error, msg string, prev *Err, skip ...int) Err {
 	err := New(value, msg, nil, 0, prev)
 
-	_, file, line, _ := runtime.Caller(1)
+	callerSkip := 1
+	if len(skip) == 1 {
+		callerSkip = skip[0]
+	}
+	_, file, line, _ := runtime.Caller(callerSkip)
 
 	err.File = file
 	err.Line = line
@@ -84,10 +92,14 @@ func NewSimple(value error, msg string, prev *Err) Err {
 //
 // It takes an error, a message, details, and a code as input.
 // If the error is already an Err struct, it clones it to preserve the previous error chain.
-func (e *Err) Wrap(value error, msg string, details any, code int) Err {
+func (e *Err) Wrap(value error, msg string, details any, code int, skip ...int) Err {
 	err := New(value, msg, details, code, e)
 
-	_, file, line, _ := runtime.Caller(1)
+	callerSkip := 1
+	if len(skip) == 1 {
+		callerSkip = skip[0]
+	}
+	_, file, line, _ := runtime.Caller(callerSkip)
 
 	err.File = file
 	err.Line = line

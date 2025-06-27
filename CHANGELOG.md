@@ -18,7 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
-## [Unreleased]
+## `0.4.0` (2025-06-27) [CURRENT]
+
+### Added
+
+- Add a new optional parameter in `New`, `NewSimple` and `Wrap` to change the value of `runtime.Caller()`
+
+## `0.3.0` (2025-05-22)
 
 ### Added
 
@@ -29,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - [BREAKING] Change `NewErr` function to add the error code to `New`
 
-## `0.2.0` (2025-05-06) [CURRENT]
+## `0.2.0` (2025-05-06)
 
 ### Added
 

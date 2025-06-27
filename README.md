@@ -29,7 +29,7 @@ import (
 
 func divide(a, b int) (int, xerr.Err) {
 	if b == 0 {
-		return 0, xerr.New(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 0, nil)
+		return 0, xerr.New(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 0, nil, 1)
 	}
 	return a / b, xerr.Empty()
 }
