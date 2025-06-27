@@ -132,7 +132,7 @@ func TestErr_Wrap(t *testing.T) {
 	assert.Equal(t, expected.Msg, wrappedErr.Msg)
 	assert.Equal(t, expected.Details, wrappedErr.Details)
 	assert.True(t, strings.Contains(wrappedErr.File, "error_test.go"))
-	assert.Equal(t, 99, wrappedErr.Line)
+	assert.Equal(t, 121, wrappedErr.Line)
 	assert.Equal(t, expected.Prev, wrappedErr.Prev)
 }
 
