@@ -68,10 +68,10 @@ func divide(a, b int) (int, xerr.Err) {
 }
 
 func main() {
-    _, err := divide(10, 0)
-	if err.IsError() {
+    _, xe := divide(10, 0)
+	if xe.IsError() {
 		log.Printf("Error: %v\n", 
-            xerr.New(errors.New("error in main()"), "Error in main()", [2]int{10, 0}, 10, &err))
+            xe.Wrap(errors.New("error in main()"), "Error in main()", [2]int{10, 0}, 10))
 	}
 }
 ```
