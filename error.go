@@ -273,6 +273,26 @@ func (e *Err) JSON(stackTrace ...bool) ([]byte, Err) {
 	return s, Empty()
 }
 
+// JSONOrEmpty converts the Err struct into a JSON representation.
+// If the Err struct is empty, it returns an empty JSON byte slice.
+func (e *Err) JSONOrEmpty(stackTrace ...bool) []byte {
+	if e.IsEmpty() {
+		return []byte{}
+	}
+
+	if len(stackTrace) == 0 || !stackTrace[0] {
+		// Disable the stack trace in the JSON output
+		e.StackTrace = nil
+	}
+
+	s, err := json.Marshal(e)
+	if err != nil {
+		return []byte{}
+	}
+
+	return s
+}
+
 // MarshalJSON implements the json.Marshaler interface for the Err type.
 //
 // It customizes the JSON representation of the Err struct to include the error message

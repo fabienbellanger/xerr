@@ -552,6 +552,40 @@ func TestErr_JSON_WithNilValue(t *testing.T) {
 
 // ----------------------------------------------------------------------------
 //
+// Tests of JSONOrEmpty()
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_JSONOrEmpty_Empty(t *testing.T) {
+	e := Empty()
+	expected := []byte("")
+	result := e.JSONOrEmpty()
+
+	assert.Equal(t, expected, result)
+}
+
+func TestErr_JSONOrEmpty_Simple(t *testing.T) {
+	now := time.Now().UnixMicro()
+	e := Err{
+		Value:     errors.New("test"),
+		Code:      404,
+		Msg:       "My error message",
+		Details:   nil,
+		File:      "error_test.go",
+		Line:      26,
+		Timestamp: now,
+		Prev:      nil,
+	}
+
+	expected := []byte(`{"value":"test","details":null,"timestamp":"` + time.UnixMicro(now).Format(time.RFC3339Nano) +
+		`","code":404,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
+	result := e.JSONOrEmpty()
+
+	assert.Equal(t, expected, result)
+}
+
+// ----------------------------------------------------------------------------
+//
 // Tests of ValueEq()
 //
 // ----------------------------------------------------------------------------

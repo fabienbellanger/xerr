@@ -18,7 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
-## `0.5.0` (2025-06-27) [CURRENT]
+## `0.6.0` (2025-07-07) [CURRENT]
+
+### Added
+
+- Add `JSONOrEmpty()` method to avoid returning an error like the `JSON()` method.
+
+## `0.5.0` (2025-06-27)
 
 ### Changed
 
