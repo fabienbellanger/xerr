@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+## [Unreleased]
+
+### Added
+
+- Bump to Go `1.26`
+- Bump to testify `v1.11.1`
+
 ## `0.6.0` (2025-07-07) [CURRENT]
 
 ### Added
