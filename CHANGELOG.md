@@ -22,8 +22,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `CLAUDE.md`
 - Bump to Go `1.26`
 - Bump to testify `v1.11.1`
+- Add `TestErr_Is_Nil`, `TestErr_ValueEq_Nil`, `TestErr_Eq_DifferentChainLengths`, `TestErr_Eq_Nil`, `TestErr_Clone_Nil` tests
+- Add `TestErr_ImplementsError`, `TestErr_ErrorsIs_Compatibility`, `TestErr_NilIsNilError` tests for standard `error` interface compatibility
+
+### Changed
+
+- [BREAKING] All constructors (`New`, `NewSimple`, `FromError`) and `Wrap` now return `*Err` instead of `Err` — `nil` means no error, compatible with standard `if err != nil` checks
+- [BREAKING] `Empty()` now returns `nil` (`*Err`)
+- [BREAKING] `JSON()` now returns `([]byte, error)` instead of `([]byte, Err)`
+- [BREAKING] `ValueEq()` and `Eq()` now accept `*Err` instead of `Err`
+- `ToError()` now returns `e` directly (since `*Err` implements `error`) instead of wrapping the message in a new `errors.New`
+- `JSON()` and `JSONOrEmpty()` now operate on a clone to avoid mutating the receiver's `StackTrace` field
+- All methods are nil-safe (nil pointer receiver handled explicitly)
+- `Eq()`: fix potential nil pointer dereference when chains have different lengths
+
+### Fixed
+
+- `Eq()`: no longer panics when comparing chains of different lengths
 
 ## `0.6.0` (2025-07-07) [CURRENT]
 

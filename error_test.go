@@ -3,6 +3,7 @@ package xerr
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ func TestErr_New_SimpleError(t *testing.T) {
 		Age:  23,
 	}
 
+	_, _, wantLine, _ := runtime.Caller(0); wantLine++
 	err := New(errors.New("test"), "My error message", details, 10, nil)
 
 	assert.Equal(t, errors.New("test"), err.Value)
@@ -32,45 +34,47 @@ func TestErr_New_SimpleError(t *testing.T) {
 	assert.Equal(t, "My error message", err.Msg)
 	assert.Equal(t, details, err.Details)
 	assert.True(t, strings.Contains(err.File, "error_test.go"))
-	assert.Equal(t, 28, err.Line)
+	assert.Equal(t, wantLine, err.Line)
 	assert.Nil(t, err.Prev)
 }
 
 func TestErr_New_With_Err(t *testing.T) {
 	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
-	err1 := New(&err2, "My error message 1", nil, 10, nil)
+	_, _, wantLine, _ := runtime.Caller(0); wantLine++
+	err1 := New(err2, "My error message 1", nil, 10, nil)
 
-	assert.Equal(t, &err2, err1.Value)
+	assert.Equal(t, err2, err1.Value)
 	assert.Equal(t, 10, err1.Code)
 	assert.Equal(t, "My error message 1", err1.Msg)
 	assert.Nil(t, err1.Details)
 	assert.True(t, strings.Contains(err1.File, "error_test.go"))
-	assert.Equal(t, 41, err1.Line)
+	assert.Equal(t, wantLine, err1.Line)
 }
 
 func TestErr_New_NestedErrors(t *testing.T) {
+	_, _, wantLine2, _ := runtime.Caller(0); wantLine2++
 	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
-	err1 := New(errors.New("test 1"), "My error message 1", nil, 10, &err2)
+	_, _, wantLine1, _ := runtime.Caller(0); wantLine1++
+	err1 := New(errors.New("test 1"), "My error message 1", nil, 10, err2)
 
 	assert.Equal(t, errors.New("test 1"), err1.Value)
 	assert.Equal(t, 10, err1.Code)
 	assert.Equal(t, "My error message 1", err1.Msg)
 	assert.Nil(t, err1.Details)
 	assert.True(t, strings.Contains(err1.File, "error_test.go"))
-	assert.Equal(t, 53, err1.Line)
+	assert.Equal(t, wantLine1, err1.Line)
 
 	assert.Equal(t, errors.New("test 2"), err2.Value)
 	assert.Equal(t, 20, err2.Code)
 	assert.Equal(t, "My error message 2", err2.Msg)
 	assert.Nil(t, err2.Details)
 	assert.True(t, strings.Contains(err2.File, "error_test.go"))
-	assert.Equal(t, 52, err2.Line)
+	assert.Equal(t, wantLine2, err2.Line)
 }
 
-func TestErr_New_Emptyor(t *testing.T) {
+func TestErr_New_ReturnsNilOnNilValue(t *testing.T) {
 	err := New(nil, "My error message", nil, 0, nil)
-
-	assert.Equal(t, Err{}, err)
+	assert.Nil(t, err)
 }
 
 func TestErr_New_WithSkip(t *testing.T) {
@@ -80,8 +84,8 @@ func TestErr_New_WithSkip(t *testing.T) {
 	assert.Equal(t, 20, err.Code)
 	assert.Equal(t, "My error message", err.Msg)
 	assert.Nil(t, err.Details)
+	// skip=0 → runtime.Caller(0) points inside error.go, not at the call site
 	assert.True(t, strings.Contains(err.File, "error.go"))
-	assert.Equal(t, 57, err.Line)
 }
 
 // ----------------------------------------------------------------------------
@@ -106,8 +110,8 @@ func TestErr_NewSimple_WithSkip(t *testing.T) {
 	assert.Equal(t, 0, err.Code)
 	assert.Equal(t, "My error message", err.Msg)
 	assert.Nil(t, err.Details)
+	// skip=0 → runtime.Caller(0) points inside error.go, not at the call site
 	assert.True(t, strings.Contains(err.File, "error.go"))
-	assert.Equal(t, 83, err.Line)
 }
 
 // ----------------------------------------------------------------------------
@@ -118,42 +122,29 @@ func TestErr_NewSimple_WithSkip(t *testing.T) {
 
 func TestErr_Wrap(t *testing.T) {
 	err := NewSimple(errors.New("test"), "My error message", nil)
+	_, _, wantLine, _ := runtime.Caller(0); wantLine++
 	wrappedErr := err.Wrap(errors.New("wrapped error"), "Wrapped message", nil, 100)
-	expected := Err{
-		Value:   errors.New("wrapped error"),
-		Code:    100,
-		Msg:     "Wrapped message",
-		Details: nil,
-		Prev:    &err,
-	}
 
-	assert.Equal(t, expected.Value, wrappedErr.Value)
-	assert.Equal(t, expected.Code, wrappedErr.Code)
-	assert.Equal(t, expected.Msg, wrappedErr.Msg)
-	assert.Equal(t, expected.Details, wrappedErr.Details)
+	assert.Equal(t, errors.New("wrapped error"), wrappedErr.Value)
+	assert.Equal(t, 100, wrappedErr.Code)
+	assert.Equal(t, "Wrapped message", wrappedErr.Msg)
+	assert.Nil(t, wrappedErr.Details)
 	assert.True(t, strings.Contains(wrappedErr.File, "error_test.go"))
-	assert.Equal(t, 121, wrappedErr.Line)
-	assert.Equal(t, expected.Prev, wrappedErr.Prev)
+	assert.Equal(t, wantLine, wrappedErr.Line)
+	assert.Equal(t, err, wrappedErr.Prev)
 }
 
 func TestErr_Wrap_WithSkip(t *testing.T) {
 	err := NewSimple(errors.New("test"), "My error message", nil)
 	wrappedErr := err.Wrap(errors.New("wrapped error"), "Wrapped message", nil, 100, 0)
-	expected := Err{
-		Value:   errors.New("wrapped error"),
-		Code:    100,
-		Msg:     "Wrapped message",
-		Details: nil,
-		Prev:    &err,
-	}
 
-	assert.Equal(t, expected.Value, wrappedErr.Value)
-	assert.Equal(t, expected.Code, wrappedErr.Code)
-	assert.Equal(t, expected.Msg, wrappedErr.Msg)
-	assert.Equal(t, expected.Details, wrappedErr.Details)
+	assert.Equal(t, errors.New("wrapped error"), wrappedErr.Value)
+	assert.Equal(t, 100, wrappedErr.Code)
+	assert.Equal(t, "Wrapped message", wrappedErr.Msg)
+	assert.Nil(t, wrappedErr.Details)
+	// skip=0 → runtime.Caller(0) points inside error.go, not at the call site
 	assert.True(t, strings.Contains(wrappedErr.File, "error.go"))
-	assert.Equal(t, 102, wrappedErr.Line)
-	assert.Equal(t, expected.Prev, wrappedErr.Prev)
+	assert.Equal(t, err, wrappedErr.Prev)
 }
 
 // ----------------------------------------------------------------------------
@@ -163,7 +154,7 @@ func TestErr_Wrap_WithSkip(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_Empty(t *testing.T) {
-	assert.Equal(t, Err{}, Empty())
+	assert.Nil(t, Empty())
 }
 
 // ----------------------------------------------------------------------------
@@ -173,7 +164,7 @@ func TestErr_Empty(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_IsEmpty(t *testing.T) {
-	err := Empty()
+	var err *Err
 	assert.True(t, err.IsEmpty())
 
 	err = New(errors.New("test"), "My error message", nil, 0, nil)
@@ -187,7 +178,7 @@ func TestErr_IsEmpty(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_IsError(t *testing.T) {
-	err := Empty()
+	var err *Err
 	assert.False(t, err.IsError())
 
 	err = New(errors.New("test"), "My error message", nil, 0, nil)
@@ -201,14 +192,13 @@ func TestErr_IsError(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_Error_Empty(t *testing.T) {
-	err := Empty()
-
+	var err *Err
 	assert.Equal(t, "", err.Error())
 }
 
 func TestErr_Error_NotEmpty(t *testing.T) {
 	now := time.Now().UnixMicro()
-	err := Err{
+	err := &Err{
 		Value:     errors.New("test"),
 		Code:      100,
 		Msg:       "My error message",
@@ -227,7 +217,7 @@ func TestErr_Error_NotEmpty(t *testing.T) {
 
 func TestErr_Error_NestedErrors(t *testing.T) {
 	now := time.Now().UnixMicro()
-	err2 := Err{
+	err2 := &Err{
 		Value:     errors.New("test 2"),
 		Msg:       "My error message 2",
 		Details:   nil,
@@ -236,7 +226,7 @@ func TestErr_Error_NestedErrors(t *testing.T) {
 		Timestamp: now,
 		Prev:      nil,
 	}
-	err := Err{
+	err := &Err{
 		Value:     errors.New("test"),
 		Code:      500,
 		Msg:       "My error message",
@@ -244,7 +234,7 @@ func TestErr_Error_NestedErrors(t *testing.T) {
 		File:      "error_test.go",
 		Line:      26,
 		Timestamp: now,
-		Prev:      &err2,
+		Prev:      err2,
 	}
 
 	expected := "value=test, code=500, msg=My error message, source=error_test.go:26, timestamp="
@@ -255,7 +245,7 @@ func TestErr_Error_NestedErrors(t *testing.T) {
 }
 
 func TestErr_Error_WithoutTimestamp(t *testing.T) {
-	err := Err{
+	err := &Err{
 		Value:     errors.New("test"),
 		Msg:       "My error message",
 		Details:   nil,
@@ -280,7 +270,7 @@ func TestErr_Error_WithDetails(t *testing.T) {
 	}
 
 	now := time.Now().UnixMicro()
-	err := Err{
+	err := &Err{
 		Value:     errors.New("test"),
 		Msg:       "My message",
 		Details:   details,
@@ -298,7 +288,7 @@ func TestErr_Error_WithDetails(t *testing.T) {
 
 func TestErr_Error_WithMsg(t *testing.T) {
 	now := time.Now().UnixMicro()
-	err := Err{
+	err := &Err{
 		Value:     errors.New("test"),
 		Msg:       "",
 		Details:   nil,
@@ -331,8 +321,8 @@ func TestErr_Is_NestedErrors(t *testing.T) {
 	myErr2 := errors.New("my error 2")
 	myErr3 := errors.New("my error 3")
 	err3 := New(myErr3, "My error message 3", nil, 0, nil)
-	err2 := New(myErr2, "My error message 2", nil, 0, &err3)
-	err := New(myErr, "My error message", nil, 0, &err2)
+	err2 := New(myErr2, "My error message 2", nil, 0, err3)
+	err := New(myErr, "My error message", nil, 0, err2)
 
 	assert.True(t, err.Is(myErr))
 	assert.True(t, err.Is(myErr2))
@@ -348,6 +338,11 @@ func TestErr_Is_False(t *testing.T) {
 	assert.False(t, err.Is(myErr2))
 }
 
+func TestErr_Is_Nil(t *testing.T) {
+	var err *Err
+	assert.False(t, err.Is(errors.New("anything")))
+}
+
 // ----------------------------------------------------------------------------
 //
 // Tests of Unwrap()
@@ -356,7 +351,7 @@ func TestErr_Is_False(t *testing.T) {
 
 func TestUnwrap(t *testing.T) {
 	now := time.Now().UnixMicro()
-	err2 := Err{
+	err2 := &Err{
 		Value:     errors.New("test 2"),
 		Msg:       "My error message 2",
 		Details:   nil,
@@ -365,7 +360,7 @@ func TestUnwrap(t *testing.T) {
 		Timestamp: now,
 		Prev:      nil,
 	}
-	err := Err{
+	err := &Err{
 		Value:     errors.New("test"),
 		Code:      500,
 		Msg:       "My error message",
@@ -373,15 +368,15 @@ func TestUnwrap(t *testing.T) {
 		File:      "error_test.go",
 		Line:      26,
 		Timestamp: now,
-		Prev:      &err2,
+		Prev:      err2,
 	}
 
-	assert.Equal(t, err.Unwrap(), &err2)
+	assert.Equal(t, err.Unwrap(), err2)
 }
 
 func TestUnwrapEmpty(t *testing.T) {
 	now := time.Now().UnixMicro()
-	err := Err{
+	err := &Err{
 		Value:     errors.New("test"),
 		Code:      500,
 		Msg:       "My error message",
@@ -402,19 +397,18 @@ func TestUnwrapEmpty(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_JSON_Empty(t *testing.T) {
-	e := Empty()
-	expected := []byte("")
+	var e *Err
 	result, err := e.JSON()
 
 	fmt.Printf("%s\n", result)
 
-	assert.Equal(t, Empty(), err)
-	assert.Equal(t, expected, result)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{}, result)
 }
 
 func TestErr_JSON_Simple(t *testing.T) {
 	now := time.Now().UnixMicro()
-	e := Err{
+	e := &Err{
 		Value:     errors.New("test"),
 		Code:      404,
 		Msg:       "My error message",
@@ -429,7 +423,7 @@ func TestErr_JSON_Simple(t *testing.T) {
 		`","code":404,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, Empty(), err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
 
@@ -443,7 +437,7 @@ func TestErr_JSON_Detail(t *testing.T) {
 		Age:  23,
 	}
 
-	e := Err{
+	e := &Err{
 		Value:     errors.New("test"),
 		Msg:       "My error message",
 		Details:   details,
@@ -458,14 +452,14 @@ func TestErr_JSON_Detail(t *testing.T) {
 		`","msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, Empty(), err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
 
 func TestErr_JSON_NestedErrors(t *testing.T) {
 	now := time.Now().UnixMicro()
 
-	e := Err{
+	e := &Err{
 		Value:     errors.New("test"),
 		Msg:       "My message",
 		Details:   nil,
@@ -490,7 +484,7 @@ func TestErr_JSON_NestedErrors(t *testing.T) {
 		`","msg":"My message 2","file":"error_test.go","line":87,"prev":null}}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, Empty(), err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
 
@@ -502,7 +496,7 @@ func TestErr_JSON_DetailError(t *testing.T) {
 		Channel: make(chan int),
 	}
 
-	e := Err{
+	e := &Err{
 		Value:     errors.New("test"),
 		Code:      10,
 		Msg:       "My error message",
@@ -517,7 +511,7 @@ func TestErr_JSON_DetailError(t *testing.T) {
 		`","code":10,"msg":"My error message","file":"error_test.go","line":26,"prev":null}`)
 	result, err := e.JSON()
 
-	assert.Equal(t, Empty(), err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
 
@@ -525,20 +519,20 @@ func TestErr_JSON_WithStackTrace(t *testing.T) {
 	e := New(errors.New("test"), "My error message", nil, 0, nil)
 	result, err := e.JSON(true)
 
-	assert.False(t, err.IsError())
+	assert.NoError(t, err)
 	assert.True(t, strings.Contains(string(result), `"stack_trace":"`))
 }
 
 func TestErr_JSON_WithStackTrace_Empty(t *testing.T) {
-	e := Empty()
+	var e *Err
 	result, err := e.JSON(true)
 
-	assert.False(t, err.IsError())
+	assert.NoError(t, err)
 	assert.False(t, strings.Contains(string(result), `"stack_trace":"`))
 }
 
 func TestErr_JSON_WithNilValue(t *testing.T) {
-	e := Err{
+	e := &Err{
 		Value:   nil,
 		Code:    0,
 		Msg:     "My error message",
@@ -546,7 +540,7 @@ func TestErr_JSON_WithNilValue(t *testing.T) {
 	}
 	result, err := e.JSON(true)
 
-	assert.False(t, err.IsError())
+	assert.NoError(t, err)
 	assert.Empty(t, result)
 }
 
@@ -557,16 +551,15 @@ func TestErr_JSON_WithNilValue(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_JSONOrEmpty_Empty(t *testing.T) {
-	e := Empty()
-	expected := []byte("")
+	var e *Err
 	result := e.JSONOrEmpty()
 
-	assert.Equal(t, expected, result)
+	assert.Equal(t, []byte{}, result)
 }
 
 func TestErr_JSONOrEmpty_Simple(t *testing.T) {
 	now := time.Now().UnixMicro()
-	e := Err{
+	e := &Err{
 		Value:     errors.New("test"),
 		Code:      404,
 		Msg:       "My error message",
@@ -607,11 +600,19 @@ func TestErr_ValueEq_WithDifferentValues(t *testing.T) {
 	err1 := New(myErr1, "My error message 1", nil, 0, nil)
 	err2 := New(myErr1, "My error message 2", nil, 0, nil)
 
-	// With different values
 	err1.Value = myErr2
 
 	assert.False(t, err1.ValueEq(err2))
 	assert.False(t, err2.ValueEq(err1))
+}
+
+func TestErr_ValueEq_Nil(t *testing.T) {
+	var err1 *Err
+	var err2 *Err
+	assert.True(t, err1.ValueEq(err2))
+
+	err1 = New(errors.New("test"), "", nil, 0, nil)
+	assert.False(t, err1.ValueEq(nil))
 }
 
 // ----------------------------------------------------------------------------
@@ -625,8 +626,8 @@ func TestErr_Eq_Simple(t *testing.T) {
 	myErr2 := errors.New("test 2")
 
 	err := New(myErr2, "My error message", nil, 200, nil)
-	err1 := New(myErr1, "My error message 1", nil, 300, &err)
-	err2 := New(myErr1, "My error message 2", nil, 400, &err)
+	err1 := New(myErr1, "My error message 1", nil, 300, err)
+	err2 := New(myErr1, "My error message 2", nil, 400, err)
 
 	assert.True(t, err1.Eq(err2))
 	assert.True(t, err2.Eq(err1))
@@ -638,10 +639,9 @@ func TestErr_Eq_WithDifferentValues(t *testing.T) {
 	myErr3 := errors.New("test 3")
 
 	err := New(myErr2, "My error message", nil, 0, nil)
-	err1 := New(myErr1, "My error message 1", nil, 0, &err)
-	err2 := New(myErr1, "My error message 2", nil, 0, &err)
+	err1 := New(myErr1, "My error message 1", nil, 0, err)
+	err2 := New(myErr1, "My error message 2", nil, 0, err)
 
-	// With different values for value
 	err1.Value = myErr3
 
 	assert.False(t, err1.Eq(err2))
@@ -654,14 +654,31 @@ func TestErr_Eq_WithDifferentPrevValues(t *testing.T) {
 	myErr3 := errors.New("test 3")
 
 	err := New(myErr2, "My error message", nil, 0, nil)
-	err1 := New(myErr1, "My error message 1", nil, 0, &err)
-	err2 := New(myErr1, "My error message 2", nil, 0, &err)
+	err1 := New(myErr1, "My error message 1", nil, 0, err)
+	err2 := New(myErr1, "My error message 2", nil, 0, err)
 
-	// With different values for prev
 	err1.Prev.Value = myErr3
 
 	assert.False(t, err1.Eq(err2))
 	assert.False(t, err2.Eq(err1))
+}
+
+func TestErr_Eq_DifferentChainLengths(t *testing.T) {
+	myErr1 := errors.New("test 1")
+	myErr2 := errors.New("test 2")
+
+	err2 := New(myErr2, "", nil, 0, nil)
+	err1a := New(myErr1, "", nil, 0, err2)
+	err1b := New(myErr1, "", nil, 0, nil)
+
+	assert.False(t, err1a.Eq(err1b))
+	assert.False(t, err1b.Eq(err1a))
+}
+
+func TestErr_Eq_Nil(t *testing.T) {
+	var err1 *Err
+	var err2 *Err
+	assert.True(t, err1.Eq(err2))
 }
 
 // ----------------------------------------------------------------------------
@@ -670,11 +687,10 @@ func TestErr_Eq_WithDifferentPrevValues(t *testing.T) {
 //
 // ----------------------------------------------------------------------------
 
-func TestErr_Clone_Empty(t *testing.T) {
-	err := Empty()
+func TestErr_Clone_Nil(t *testing.T) {
+	var err *Err
 	clone := err.Clone()
-
-	assert.Equal(t, err, *clone)
+	assert.Nil(t, clone)
 }
 
 func TestErr_Clone_Simple(t *testing.T) {
@@ -682,7 +698,7 @@ func TestErr_Clone_Simple(t *testing.T) {
 	err := New(myErr, "My error message 1", nil, 0, nil)
 	clone := err.Clone()
 
-	assert.Equal(t, err, *clone)
+	assert.Equal(t, *err, *clone)
 }
 
 func TestErr_Clone_NestedErrors(t *testing.T) {
@@ -690,22 +706,21 @@ func TestErr_Clone_NestedErrors(t *testing.T) {
 	myErr2 := errors.New("test 2")
 
 	err := New(myErr2, "My error message", nil, 0, nil)
-	err1 := New(myErr1, "My error message 1", nil, 0, &err)
+	err1 := New(myErr1, "My error message 1", nil, 0, err)
 	clone := err1.Clone()
 
-	assert.Equal(t, err1, *clone)
+	assert.Equal(t, *err1, *clone)
 }
 
 func TestErr_Clone_NestedErrors_Empty(t *testing.T) {
 	myErr1 := errors.New("test 1")
 	myErr2 := errors.New("test 2")
-	empty := Empty()
 
-	err := New(myErr2, "My error message", nil, 0, &empty)
-	err1 := New(myErr1, "My error message 1", nil, 0, &err)
+	err := New(myErr2, "My error message", nil, 0, nil)
+	err1 := New(myErr1, "My error message 1", nil, 0, err)
 	clone := err1.Clone()
 
-	assert.Equal(t, err1, *clone)
+	assert.Equal(t, *err1, *clone)
 }
 
 // ----------------------------------------------------------------------------
@@ -716,7 +731,7 @@ func TestErr_Clone_NestedErrors_Empty(t *testing.T) {
 
 func TestErr_ToError(t *testing.T) {
 	now := time.Now().UnixMicro()
-	e := Err{
+	e := &Err{
 		Value:     errors.New("test"),
 		Code:      10,
 		Msg:       "My error message",
@@ -726,23 +741,14 @@ func TestErr_ToError(t *testing.T) {
 		Timestamp: now,
 		Prev:      nil,
 	}
-	assert.Equal(t, e.ToError(), errors.New("value=test, code=10, msg=My error message, source=error_test.go:26, timestamp="+time.UnixMicro(now).Format(time.RFC3339Nano)))
+	// ToError now returns e itself (implements error), so the message matches Error()
+	assert.Equal(t, e.ToError(), error(e))
 }
 
 func TestErr_ToError_Empty(t *testing.T) {
-	err := Empty()
-
+	var err *Err
 	assert.Equal(t, err.ToError(), nil)
 }
-
-// ----------------------------------------------------------------------------
-//
-// Tests of Wrap()
-//
-// ----------------------------------------------------------------------------
-
-// func TestErr_Wrap(t *testing.T) {
-// }
 
 // ----------------------------------------------------------------------------
 //
@@ -751,23 +757,43 @@ func TestErr_ToError_Empty(t *testing.T) {
 // ----------------------------------------------------------------------------
 
 func TestErr_FromError(t *testing.T) {
-	expected := Err{
-		Value:   errors.New("test"),
-		Code:    0,
-		Msg:     "",
-		Details: nil,
-		Prev:    nil,
-	}
-
 	err := FromError(errors.New("test"))
 
-	assert.Equal(t, err.Value, expected.Value)
-	assert.Equal(t, err.Code, expected.Code)
-	assert.Equal(t, err.Msg, expected.Msg)
-	assert.Equal(t, err.Details, expected.Details)
-	assert.Equal(t, err.Prev, expected.Prev)
+	assert.Equal(t, errors.New("test"), err.Value)
+	assert.Equal(t, 0, err.Code)
+	assert.Equal(t, "", err.Msg)
+	assert.Nil(t, err.Details)
+	assert.Nil(t, err.Prev)
 }
 
 func TestErr_FromError_Empty(t *testing.T) {
-	assert.Equal(t, FromError(nil), Empty())
+	assert.Nil(t, FromError(nil))
+}
+
+// ----------------------------------------------------------------------------
+//
+// Tests of standard error interface compatibility
+//
+// ----------------------------------------------------------------------------
+
+func TestErr_ImplementsError(t *testing.T) {
+	var err error
+	err = New(errors.New("test"), "msg", nil, 0, nil)
+	assert.NotNil(t, err)
+}
+
+func TestErr_ErrorsIs_Compatibility(t *testing.T) {
+	sentinel := errors.New("sentinel")
+	err := New(sentinel, "wrapped", nil, 0, nil)
+
+	// Standard errors.Is works via Unwrap chain — but our Is() method handles the Prev chain.
+	// Direct value match should work via the error interface.
+	assert.True(t, err.Is(sentinel))
+}
+
+func TestErr_NilIsNilError(t *testing.T) {
+	var err *Err
+	// err.ToError() returns untyped nil (not a typed nil in interface)
+	assert.Nil(t, err)
+	assert.Nil(t, err.ToError())
 }

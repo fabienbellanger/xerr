@@ -19,7 +19,9 @@ This is a single-file Go library (`error.go`) with no subpackages. The entire pu
 
 ### Core type: `Err`
 
-`Err` is a value type (not a pointer) that wraps `error` with:
+`Err` is a struct that wraps `error`. All constructors return `*Err`, so `nil` means no error — fully compatible with the standard `error` interface.
+
+Fields:
 - `Value` — the underlying Go error
 - `Code` — optional integer error code
 - `Msg` — human-readable message
@@ -31,10 +33,24 @@ This is a single-file Go library (`error.go`) with no subpackages. The entire pu
 
 ### Design patterns
 
-- Functions return `xerr.Err` by value, not `error`. Callers check `err.IsEmpty()` / `err.IsError()` instead of `err != nil`.
-- `Empty()` serves as the "no error" sentinel — returned when there's nothing to report.
+- Constructors (`New`, `NewSimple`, `FromError`) and `Wrap` return `*Err`. Callers use `if err != nil` as usual.
+- `Empty()` returns `nil`; kept for readability but `nil` is equivalent.
+- All methods have nil-safe pointer receivers: `IsEmpty()`, `IsError()`, `Error()`, `Is()`, etc.
 - `New()` accepts a variadic `skip` parameter to control `runtime.Caller` depth, allowing wrapper functions to report the caller's file/line rather than their own. `NewSimple` and `Wrap` do the same.
-- `Clone()` deep-copies the entire `Prev` chain; used internally by `Wrap` to preserve the chain without mutation.
-- `JSON()` returns `([]byte, Err)` — the second return is itself an `Err`. `JSONOrEmpty()` silently drops marshaling errors and returns `[]byte{}` on failure.
+- `Clone()` deep-copies the entire `Prev` chain; used internally by `Wrap` and `JSON()` to avoid mutating the receiver.
+- `JSON()` returns `([]byte, error)`. `JSONOrEmpty()` silently drops marshaling errors and returns `[]byte{}` on failure. Both work on a clone to avoid side effects.
+- `ToError()` returns `e` directly (since `*Err` implements `error`), or `nil` if empty.
 - `MarshalJSON` uses a local `Alias` type to avoid infinite recursion while customizing JSON output (converts `Value error` → string, `Timestamp int64` → `time.Time`).
-- `Is()` walks the `Prev` chain, not just `e.Value`, so `errors.Is`-style checks work across the full chain.
+- `Is()` walks the `Prev` chain, not just `e.Value`, so error matching works across the full chain.
+
+### Testing line numbers
+
+Tests that verify `err.File` and `err.Line` use `runtime.Caller(0)` to capture the expected line dynamically:
+
+```go
+_, _, wantLine, _ := runtime.Caller(0); wantLine++
+err := New(errors.New("test"), ...)
+assert.Equal(t, wantLine, err.Line)
+```
+
+Tests for the `skip` parameter only assert the filename (`error.go` vs `error_test.go`), not the exact line.

@@ -31,10 +31,10 @@ type Err struct {
 	StackTrace []byte `json:"stack_trace,omitempty"`
 }
 
-// New creates a new Err struct with the provided error value, message,
-// details, and a pointer to a previous Err struct.
+// New creates a new *Err with the provided error value, message, details, code,
+// and a pointer to a previous Err.
 //
-// The timestamp is set to the current time in microseconds since the epoch.
+// Returns nil if value is nil, making it compatible with standard nil checks.
 //
 // Example:
 //
@@ -44,10 +44,10 @@ type Err struct {
 //	    Age  int    `json:"age"`
 //	}
 //	details := Person{Name: "John", Age: 30}
-//	err := New(myError, "My error message", details, nil)
-func New(value error, msg string, details any, code int, prev *Err, skip ...int) Err {
+//	err := New(myError, "My error message", details, 0, nil)
+func New(value error, msg string, details any, code int, prev *Err, skip ...int) *Err {
 	if value == nil {
-		return Empty()
+		return nil
 	}
 
 	callerSkip := 1
@@ -57,7 +57,7 @@ func New(value error, msg string, details any, code int, prev *Err, skip ...int)
 	_, file, line, _ := runtime.Caller(callerSkip)
 	stack := debug.Stack()
 
-	return Err{
+	return &Err{
 		Value:      value,
 		Code:       code,
 		Msg:        msg,
@@ -70,11 +70,14 @@ func New(value error, msg string, details any, code int, prev *Err, skip ...int)
 	}
 }
 
-// NewSimple creates a new Err struct with the provided error value and message.
+// NewSimple creates a new *Err with the provided error value and message.
 //
 // It sets the details to nil, the code to 0, and the previous error to nil.
-func NewSimple(value error, msg string, prev *Err, skip ...int) Err {
-	err := New(value, msg, nil, 0, prev)
+func NewSimple(value error, msg string, prev *Err, skip ...int) *Err {
+	e := New(value, msg, nil, 0, prev)
+	if e == nil {
+		return nil
+	}
 
 	callerSkip := 1
 	if len(skip) == 1 {
@@ -82,17 +85,15 @@ func NewSimple(value error, msg string, prev *Err, skip ...int) Err {
 	}
 	_, file, line, _ := runtime.Caller(callerSkip)
 
-	err.File = file
-	err.Line = line
+	e.File = file
+	e.Line = line
 
-	return err
+	return e
 }
 
-// Wrap creates a new Err struct that wraps an existing error with additional context.
-//
-// It takes an error, a message, details, and a code as input.
-// If the error is already an Err struct, it clones it to preserve the previous error chain.
-func (e *Err) Wrap(value error, msg string, details any, code int, skip ...int) Err {
+// Wrap creates a new *Err that wraps an existing error with additional context,
+// chaining the current error as Prev.
+func (e *Err) Wrap(value error, msg string, details any, code int, skip ...int) *Err {
 	err := New(value, msg, details, code, e)
 
 	callerSkip := 1
@@ -110,13 +111,12 @@ func (e *Err) Wrap(value error, msg string, details any, code int, skip ...int) 
 // Clone creates a deep copy of the Err struct.
 //
 // It recursively clones the Prev field to ensure that the entire error chain
-// is duplicated.
+// is duplicated. Returns nil if called on a nil pointer.
 func (e *Err) Clone() *Err {
 	if e == nil {
 		return nil
 	}
 
-	// Reservely clone the Prev field to avoid modifying the original
 	var clonedPrev *Err
 	if e.Prev != nil {
 		clonedPrev = e.Prev.Clone()
@@ -135,21 +135,23 @@ func (e *Err) Clone() *Err {
 	}
 }
 
-// Empty returns an empty Err struct.
-func Empty() Err {
-	return Err{}
+// Empty returns nil, representing the absence of an error.
+// Callers may also use nil directly.
+func Empty() *Err {
+	return nil
 }
 
-// IsEmpty checks if the Err struct is empty, meaning it has no error value.
+// IsEmpty checks if the Err is nil or has no error value.
 func (e *Err) IsEmpty() bool {
-	return e.Value == nil
+	return e == nil || e.Value == nil
 }
 
-// IsError checks if the Err struct contains an error value.
+// IsError checks if the Err contains an error value.
 func (e *Err) IsError() bool {
-	return e.Value != nil
+	return e != nil && e.Value != nil
 }
 
+// Error implements the error interface.
 func (e *Err) Error() string {
 	if e.IsEmpty() {
 		return ""
@@ -184,108 +186,83 @@ func (e *Err) Error() string {
 	return result
 }
 
-// Is checks if the error in the Err struct is of a specific type or value.
-//
-// It uses the errors.Is function to check if the error in the Err struct
-// matches the provided error value.
+// Is checks if any error in the chain matches the target, using errors.Is semantics.
 //
 // Example:
 //
 //	var myError = errors.New("my error")
-//	details := Person{Name: "John", Age: 30}
-//	err := New(myError, "My error message", details, nil)
+//	err := New(myError, "My error message", nil, 0, nil)
 //	if err.Is(myError) {
 //		fmt.Println("The error matches myError")
 //	}
 func (e *Err) Is(err error) bool {
+	if e == nil {
+		return false
+	}
 	if errors.Is(e.Value, err) {
 		return true
 	}
 
 	prev := e.Prev
-	for !(prev == nil) {
+	for prev != nil {
 		if errors.Is(prev.Value, err) {
 			return true
 		}
-
 		prev = prev.Prev
 	}
 	return false
 }
 
-// Unwrap returns the previous error in the chain, if any.
-//
-// This method is used to retrieve the underlying error that caused the current error.
-// It is part of the error wrapping mechanism in Go.
-// The Unwrap method allows you to access the original error wrapped
-// in the Err struct, enabling you to inspect or handle it as needed.
+// Unwrap returns the previous error in the chain, implementing the errors.Unwrap interface.
 func (e *Err) Unwrap() error {
-	if e.Prev != nil {
-		return e.Prev
+	if e == nil || e.Prev == nil {
+		return nil
 	}
-	return nil
+	return e.Prev
 }
 
-// Wrap creates a new Err struct that wraps an existing error with additional context.
-//
-// It takes an error, a message, details, and a code as input.
-// If the error is already an Err struct, it clones it to preserve the previous error chain.
-// If the error is not an Err struct, it creates a new Err struct with the provided details.
-// TODO: Review and add tests for this function
-// func Wrap(err error, msg string, details any, code int) Err {
-// 	var prev *Err
-// 	if e, ok := err.(Err); ok {
-// 		prev = e.Clone()
-// 	} else if e, ok := err.(*Err); ok {
-// 		prev = e.Clone()
-// 	}
-// 	return New(err, msg, details, code, prev)
-// }
-
-// FromError creates a new Err struct from an existing error.
-//
-// If the provided error is nil, it returns an empty Err struct.
-// If the error is not nil, it creates a new Err struct with the error value,
-// an empty message, and no details or code.
-func FromError(err error) Err {
+// FromError creates a new *Err from an existing error.
+// Returns nil if err is nil.
+func FromError(err error) *Err {
 	if err == nil {
-		return Empty()
+		return nil
 	}
 	return New(err, "", nil, 0, nil)
 }
 
-// JSON converts the Err struct into a JSON representation.
-func (e *Err) JSON(stackTrace ...bool) ([]byte, Err) {
+// JSON converts the Err into a JSON representation.
+// Pass true to include the stack trace in the output.
+func (e *Err) JSON(stackTrace ...bool) ([]byte, error) {
 	if e.IsEmpty() {
-		return []byte{}, Empty()
+		return []byte{}, nil
 	}
 
+	clone := e.Clone()
 	if len(stackTrace) == 0 || !stackTrace[0] {
-		// Disable the stack trace in the JSON output
-		e.StackTrace = nil
+		clone.StackTrace = nil
 	}
 
-	s, err := json.Marshal(e)
+	s, err := json.Marshal(clone)
 	if err != nil {
-		return []byte{}, New(err, "Error when converting Err into JSON", nil, 0, nil)
+		return []byte{}, err
 	}
 
-	return s, Empty()
+	return s, nil
 }
 
-// JSONOrEmpty converts the Err struct into a JSON representation.
-// If the Err struct is empty, it returns an empty JSON byte slice.
+// JSONOrEmpty converts the Err into a JSON representation.
+// Returns an empty byte slice if the Err is empty or marshaling fails.
 func (e *Err) JSONOrEmpty(stackTrace ...bool) []byte {
 	if e.IsEmpty() {
 		return []byte{}
 	}
 
+	clone := e.Clone()
 	if len(stackTrace) == 0 || !stackTrace[0] {
-		// Disable the stack trace in the JSON output
-		e.StackTrace = nil
+		clone.StackTrace = nil
 	}
 
-	s, err := json.Marshal(e)
+	s, err := json.Marshal(clone)
 	if err != nil {
 		return []byte{}
 	}
@@ -297,12 +274,6 @@ func (e *Err) JSONOrEmpty(stackTrace ...bool) []byte {
 //
 // It customizes the JSON representation of the Err struct to include the error message
 // and other fields in a specific format.
-//
-// The Value field is converted to a string using the Error() method if it is not nil.
-//
-// The function returns the JSON representation of the Err struct.
-//
-// If the Value field is nil, it returns an empty string for the Value field in the JSON output.
 func (e *Err) MarshalJSON() ([]byte, error) {
 	type Alias Err // Use an alias to avoid infinite recursion
 
@@ -317,20 +288,15 @@ func (e *Err) MarshalJSON() ([]byte, error) {
 			if e.Value != nil {
 				return e.Value.Error()
 			}
-
 			return ""
 		}(),
 		Details: func() any {
-			// If Details is nil, return nil
 			if e.Details == nil {
 				return nil
 			}
-
-			// Check if Details is serializable
 			if _, err := json.Marshal(e.Details); err != nil {
 				return nil
 			}
-
 			return e.Details
 		}(),
 		Timestamp:  time.UnixMicro(e.Timestamp),
@@ -339,45 +305,45 @@ func (e *Err) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// ValueEq checks if the Value field of the Err struct is equal to
-// the Value field of another Err struct.
+// ValueEq checks if the Value field of two Err structs are equal.
 //
 // Example:
 //
 //	var myError = errors.New("my error")
-//	err1 := New(myErr, "My error message 1", nil, nil)
-//	err2 := New(myErr, "My error message 2", nil, nil)
+//	err1 := New(myErr, "My error message 1", nil, 0, nil)
+//	err2 := New(myErr, "My error message 2", nil, 0, nil)
 //	println(err1.ValueEq(err2)) // true
-func (e *Err) ValueEq(other Err) bool {
+func (e *Err) ValueEq(other *Err) bool {
+	if e == nil || other == nil {
+		return e == other
+	}
 	return errors.Is(e.Value, other.Value)
 }
 
-// Eq checks if the Err struct is equal to another Err struct only by comparing
-// the Value field and the previous errors in the chain.
-func (e *Err) Eq(other Err) bool {
+// Eq checks if two Err structs are equal by comparing Value and the Prev chain.
+func (e *Err) Eq(other *Err) bool {
+	if e == nil || other == nil {
+		return e == other
+	}
 	if !errors.Is(e.Value, other.Value) {
 		return false
 	}
 
-	prev := e.Prev
-	for !(prev == nil) {
-		if !errors.Is(prev.Value, other.Prev.Value) {
+	ep, op := e.Prev, other.Prev
+	for ep != nil && op != nil {
+		if !errors.Is(ep.Value, op.Value) {
 			return false
 		}
-
-		prev = prev.Prev
+		ep, op = ep.Prev, op.Prev
 	}
-	return true
+	return ep == nil && op == nil
 }
 
-// ToError converts the Err struct to a standard error.
-//
-// If the Err struct is nil or empty, it returns nil.
-// If the Err struct is not nil, it returns a new error with the message
-// from the Err struct.
+// ToError converts the Err to a standard error interface value.
+// Returns nil if the Err is nil or empty.
 func (e *Err) ToError() error {
 	if e == nil || e.IsEmpty() {
 		return nil
 	}
-	return errors.New(e.Error())
+	return e
 }
