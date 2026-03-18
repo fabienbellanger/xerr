@@ -1,6 +1,7 @@
 .PHONY: update \
 	update-all \
 	format \
+	fix \
 	lint \
 	test \
 	test-verbose \
@@ -36,6 +37,7 @@ GO_MOD=$(GO_CMD) mod
 GO_TOOL=$(GO_CMD) tool
 GO_VET=$(GO_CMD) vet
 GO_FMT=$(GO_CMD) fmt
+GO_FIX=$(GO_CMD) fix
 GODOC=godoc
 
 ## update: Update modules
@@ -50,8 +52,12 @@ update-all:
 format:
 	$(GO_FMT) ./...
 
+## fix: Run go fix
+fix:
+	$(GO_FIX) ./...
+
 ## lint: Run go vet
-lint: format
+lint: format fix
 	$(GO_VET) ./...
 
 ## test: Run test
