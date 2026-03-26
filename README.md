@@ -27,22 +27,22 @@ import (
 	"github.com/fabienbellanger/xerr"
 )
 
-func divide(a, b int) (int, xerr.Err) {
+func divide(a, b int) (int, *xerr.Err) {
 	if b == 0 {
-		return 0, xerr.New(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 0, nil, 1)
+		return 0, xerr.New(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 0, nil)
 	}
 	return a / b, xerr.Empty()
 }
 
 func main() {
-    // Without error
+	// Without error
 	d, err := divide(10, 10)
 	if err.IsEmpty() {
 		log.Printf("No error: %d\n", d)
 	}
 
-    // With error
-	_, err := divide(10, 0)
+	// With error
+	_, err = divide(10, 0)
 	if err.IsError() {
 		log.Printf("Error: %v\n", err)
 	}
@@ -60,7 +60,7 @@ import (
 	"github.com/fabienbellanger/xerr"
 )
 
-func divide(a, b int) (int, xerr.Err) {
+func divide(a, b int) (int, *xerr.Err) {
 	if b == 0 {
 		return 0, xerr.New(errors.New("cannot divide by 0"), "Cannot divide by 0", nil, 20, nil)
 	}
@@ -68,10 +68,10 @@ func divide(a, b int) (int, xerr.Err) {
 }
 
 func main() {
-    _, xe := divide(10, 0)
+	_, xe := divide(10, 0)
 	if xe.IsError() {
-		log.Printf("Error: %v\n", 
-            xe.Wrap(errors.New("error in main()"), "Error in main()", [2]int{10, 0}, 10))
+		log.Printf("Error: %v\n",
+			xe.Wrap(errors.New("error in main()"), "Error in main()", [2]int{10, 0}, 10))
 	}
 }
 ```
@@ -86,16 +86,22 @@ make bench
 Results:
 ```
 goos: darwin
-goarch: amd64
+goarch: arm64
 pkg: github.com/fabienbellanger/xerr
-cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
-BenchmarkErr_Error-12                    2479927               506.7 ns/op           264 B/op          3 allocs/op
-BenchmarkErr_JSON_Simple-12               559191              2186 ns/op             688 B/op          5 allocs/op
-BenchmarkErr_JSON_WithDetails-12          465482              2469 ns/op             720 B/op          7 allocs/op
-BenchmarkErr_JSON_NestedErrors-12          83658             14154 ns/op            3989 B/op         14 allocs/op
-BenchmarkErr_Is_Simple-12               100000000               10.34 ns/op            0 B/op          0 allocs/op
-BenchmarkErr_Is_NestedErrors-12         57608085                20.82 ns/op            0 B/op          0 allocs/op
-BenchmarkErr_Clone_4-12                  8457126               153.7 ns/op           384 B/op          4 allocs/op
-BenchmarkErr_Clone_8-12                  4106058               285.3 ns/op           768 B/op          8 allocs/op
-BenchmarkErr_Clone_16-12                 2079298               575.0 ns/op          1536 B/op         16 allocs/op
+cpu: Apple M3
+BenchmarkErr_New-8                 254626       4621 ns/op      1416 B/op       5 allocs/op
+BenchmarkErr_NewSimple-8           184974       6640 ns/op      1664 B/op       7 allocs/op
+BenchmarkErr_FromError-8           236146       5148 ns/op      1400 B/op       4 allocs/op
+BenchmarkErr_Error-8              1668969        721 ns/op       600 B/op      14 allocs/op
+BenchmarkErr_Wrap-8                176904       6825 ns/op      1792 B/op       8 allocs/op
+BenchmarkErr_JSON_Simple-8         573890       2063 ns/op       752 B/op       5 allocs/op
+BenchmarkErr_JSON_WithDetails-8    460956       2603 ns/op       784 B/op       7 allocs/op
+BenchmarkErr_JSON_NestedErrors-8    21578      55670 ns/op     15920 B/op      20 allocs/op
+BenchmarkErr_Is_Simple-8        152763013       7.86 ns/op         0 B/op       0 allocs/op
+BenchmarkErr_Is_NestedErrors-8   70081856      17.11 ns/op         0 B/op       0 allocs/op
+BenchmarkErr_JSONOrEmpty-8         559858       2082 ns/op       752 B/op       5 allocs/op
+BenchmarkErr_Eq-8               100000000      10.16 ns/op         0 B/op       0 allocs/op
+BenchmarkErr_Clone_4-8            9479798        128 ns/op       512 B/op       4 allocs/op
+BenchmarkErr_Clone_8-8            4535299        258 ns/op      1024 B/op       8 allocs/op
+BenchmarkErr_Clone_16-8           2370424        509 ns/op      2048 B/op      16 allocs/op
 ```
