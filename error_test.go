@@ -1,6 +1,7 @@
 package xerr
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime"
@@ -26,7 +27,8 @@ func TestErr_New_SimpleError(t *testing.T) {
 		Age:  23,
 	}
 
-	_, _, wantLine, _ := runtime.Caller(0); wantLine++
+	_, _, wantLine, _ := runtime.Caller(0)
+	wantLine++
 	err := New(errors.New("test"), "My error message", details, 10, nil)
 
 	assert.Equal(t, errors.New("test"), err.Value)
@@ -40,7 +42,8 @@ func TestErr_New_SimpleError(t *testing.T) {
 
 func TestErr_New_With_Err(t *testing.T) {
 	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
-	_, _, wantLine, _ := runtime.Caller(0); wantLine++
+	_, _, wantLine, _ := runtime.Caller(0)
+	wantLine++
 	err1 := New(err2, "My error message 1", nil, 10, nil)
 
 	assert.Equal(t, err2, err1.Value)
@@ -52,9 +55,11 @@ func TestErr_New_With_Err(t *testing.T) {
 }
 
 func TestErr_New_NestedErrors(t *testing.T) {
-	_, _, wantLine2, _ := runtime.Caller(0); wantLine2++
+	_, _, wantLine2, _ := runtime.Caller(0)
+	wantLine2++
 	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
-	_, _, wantLine1, _ := runtime.Caller(0); wantLine1++
+	_, _, wantLine1, _ := runtime.Caller(0)
+	wantLine1++
 	err1 := New(errors.New("test 1"), "My error message 1", nil, 10, err2)
 
 	assert.Equal(t, errors.New("test 1"), err1.Value)
@@ -103,6 +108,11 @@ func TestErr_NewSimple(t *testing.T) {
 	assert.Nil(t, err.Prev)
 }
 
+func TestErr_NewSimple_ReturnsNilOnNilValue(t *testing.T) {
+	err := NewSimple(nil, "My error message", nil)
+	assert.Nil(t, err)
+}
+
 func TestErr_NewSimple_WithSkip(t *testing.T) {
 	err := NewSimple(errors.New("test"), "My error message", nil, 0)
 
@@ -122,7 +132,8 @@ func TestErr_NewSimple_WithSkip(t *testing.T) {
 
 func TestErr_Wrap(t *testing.T) {
 	err := NewSimple(errors.New("test"), "My error message", nil)
-	_, _, wantLine, _ := runtime.Caller(0); wantLine++
+	_, _, wantLine, _ := runtime.Caller(0)
+	wantLine++
 	wrappedErr := err.Wrap(errors.New("wrapped error"), "Wrapped message", nil, 100)
 
 	assert.Equal(t, errors.New("wrapped error"), wrappedErr.Value)
@@ -542,6 +553,59 @@ func TestErr_JSON_WithNilValue(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Empty(t, result)
+}
+
+// failOnSecondMarshal succeeds on the first json.Marshal call (the pre-check
+// inside MarshalJSON) but fails on the second (the real marshal).
+type failOnSecondMarshal struct {
+	calls *int
+}
+
+func (f failOnSecondMarshal) MarshalJSON() ([]byte, error) {
+	*f.calls++
+	if *f.calls > 1 {
+		return nil, errors.New("marshal failed")
+	}
+	return []byte(`"ok"`), nil
+}
+
+func TestErr_JSON_MarshalError(t *testing.T) {
+	calls := 0
+	e := &Err{
+		Value:     errors.New("test"),
+		Msg:       "msg",
+		Details:   failOnSecondMarshal{calls: &calls},
+		Timestamp: time.Now().UnixMicro(),
+	}
+	result, err := e.JSON()
+
+	assert.Error(t, err)
+	assert.Equal(t, []byte{}, result)
+}
+
+func TestErr_JSONOrEmpty_MarshalError(t *testing.T) {
+	calls := 0
+	e := &Err{
+		Value:     errors.New("test"),
+		Msg:       "msg",
+		Details:   failOnSecondMarshal{calls: &calls},
+		Timestamp: time.Now().UnixMicro(),
+	}
+	result := e.JSONOrEmpty()
+
+	assert.Equal(t, []byte{}, result)
+}
+
+func TestErr_MarshalJSON_NilValue(t *testing.T) {
+	e := &Err{
+		Value:     nil,
+		Msg:       "msg",
+		Timestamp: time.Now().UnixMicro(),
+	}
+	result, err := json.Marshal(e)
+
+	assert.NoError(t, err)
+	assert.Contains(t, string(result), `"value":""`)
 }
 
 // ----------------------------------------------------------------------------

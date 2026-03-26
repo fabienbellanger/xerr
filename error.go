@@ -1,9 +1,8 @@
-// Package xerr is a simple error wrapper that provides additional context and
-// functionality for error handling in Go applications.
+// Package xerr provides a structured error type with call-site capture,
+// error chaining, stack traces, and JSON serialization.
 //
-// It includes features such as JSON serialization, nested error handling,
-// and custom error messages. The package is designed to be straightforward to use
-// and integrate into existing Go codebases, making it a valuable tool.
+// All constructors return *Err, so a nil return means no error and is fully
+// compatible with standard Go nil checks.
 package xerr
 
 import (
@@ -15,10 +14,9 @@ import (
 	"time"
 )
 
-// Err is a custom error type that wraps an error value with additional context.
-//
-// It includes fields for a message, details, file name, line number,
-// timestamp, and a pointer to a previous error.
+// Err wraps an error with structured context: an optional code, human-readable
+// message, arbitrary details, call-site location (File, Line), timestamp, stack
+// trace, and a Prev pointer that forms a linked chain of errors.
 type Err struct {
 	Value      error  `json:"value"`
 	Code       int    `json:"code,omitzero"`
@@ -32,9 +30,12 @@ type Err struct {
 }
 
 // New creates a new *Err with the provided error value, message, details, code,
-// and a pointer to a previous Err.
+// and a pointer to a previous Err. Returns nil if value is nil.
 //
-// Returns nil if value is nil, making it compatible with standard nil checks.
+// The optional skip parameter controls the depth passed to [runtime.Caller] for
+// capturing the call site. It defaults to 1 (the caller of New). Wrapper
+// functions should pass a higher value so that File and Line reflect their own
+// caller rather than the wrapper itself.
 //
 // Example:
 //
@@ -70,9 +71,10 @@ func New(value error, msg string, details any, code int, prev *Err, skip ...int)
 	}
 }
 
-// NewSimple creates a new *Err with the provided error value and message.
+// NewSimple creates a new *Err with only a value, message, and optional prev
+// chain. Details is nil, Code is 0.
 //
-// It sets the details to nil, the code to 0, and the previous error to nil.
+// The optional skip parameter works the same as in [New].
 func NewSimple(value error, msg string, prev *Err, skip ...int) *Err {
 	e := New(value, msg, nil, 0, prev)
 	if e == nil {
@@ -91,8 +93,10 @@ func NewSimple(value error, msg string, prev *Err, skip ...int) *Err {
 	return e
 }
 
-// Wrap creates a new *Err that wraps an existing error with additional context,
-// chaining the current error as Prev.
+// Wrap creates a new *Err with value, msg, details, and code, chaining the
+// receiver as Prev. The receiver is cloned to avoid mutation.
+//
+// The optional skip parameter works the same as in [New].
 func (e *Err) Wrap(value error, msg string, details any, code int, skip ...int) *Err {
 	err := New(value, msg, details, code, e)
 
@@ -151,7 +155,8 @@ func (e *Err) IsError() bool {
 	return e != nil && e.Value != nil
 }
 
-// Error implements the error interface.
+// Error implements the error interface, returning a human-readable string with
+// all non-zero fields formatted as key=value pairs (e.g. "value=…, code=…").
 func (e *Err) Error() string {
 	if e.IsEmpty() {
 		return ""
@@ -186,7 +191,7 @@ func (e *Err) Error() string {
 	return result
 }
 
-// Is checks if any error in the chain matches the target, using errors.Is semantics.
+// Is reports whether any Value in the Prev chain matches target using [errors.Is].
 //
 // Example:
 //
@@ -213,7 +218,8 @@ func (e *Err) Is(err error) bool {
 	return false
 }
 
-// Unwrap returns the previous error in the chain, implementing the errors.Unwrap interface.
+// Unwrap returns the previous error in the chain, satisfying the interface
+// expected by [errors.Unwrap].
 func (e *Err) Unwrap() error {
 	if e == nil || e.Prev == nil {
 		return nil
@@ -221,8 +227,8 @@ func (e *Err) Unwrap() error {
 	return e.Prev
 }
 
-// FromError creates a new *Err from an existing error.
-// Returns nil if err is nil.
+// FromError creates a new *Err from a plain error, capturing the caller's
+// file and line. Returns nil if err is nil.
 func FromError(err error) *Err {
 	if err == nil {
 		return nil
@@ -230,8 +236,9 @@ func FromError(err error) *Err {
 	return New(err, "", nil, 0, nil)
 }
 
-// JSON converts the Err into a JSON representation.
-// Pass true to include the stack trace in the output.
+// JSON returns the JSON encoding of the Err. The stack trace is omitted
+// unless stackTrace is true. It operates on a clone to avoid mutating the
+// receiver.
 func (e *Err) JSON(stackTrace ...bool) ([]byte, error) {
 	if e.IsEmpty() {
 		return []byte{}, nil
@@ -250,8 +257,8 @@ func (e *Err) JSON(stackTrace ...bool) ([]byte, error) {
 	return s, nil
 }
 
-// JSONOrEmpty converts the Err into a JSON representation.
-// Returns an empty byte slice if the Err is empty or marshaling fails.
+// JSONOrEmpty is like [Err.JSON] but silently returns an empty byte slice on
+// error or if the Err is empty.
 func (e *Err) JSONOrEmpty(stackTrace ...bool) []byte {
 	if e.IsEmpty() {
 		return []byte{}
@@ -270,10 +277,10 @@ func (e *Err) JSONOrEmpty(stackTrace ...bool) []byte {
 	return s
 }
 
-// MarshalJSON implements the json.Marshaler interface for the Err type.
-//
-// It customizes the JSON representation of the Err struct to include the error message
-// and other fields in a specific format.
+// MarshalJSON implements [json.Marshaler]. It converts Value to its string
+// representation, Timestamp to a [time.Time], StackTrace to a string, and
+// drops non-serializable Details. An internal Alias type prevents infinite
+// recursion.
 func (e *Err) MarshalJSON() ([]byte, error) {
 	type Alias Err // Use an alias to avoid infinite recursion
 
@@ -305,13 +312,14 @@ func (e *Err) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// ValueEq checks if the Value field of two Err structs are equal.
+// ValueEq reports whether e and other have the same Value (compared with
+// [errors.Is]). Both nil returns true; one nil returns false.
 //
 // Example:
 //
 //	var myError = errors.New("my error")
-//	err1 := New(myErr, "My error message 1", nil, 0, nil)
-//	err2 := New(myErr, "My error message 2", nil, 0, nil)
+//	err1 := New(myError, "My error message 1", nil, 0, nil)
+//	err2 := New(myError, "My error message 2", nil, 0, nil)
 //	println(err1.ValueEq(err2)) // true
 func (e *Err) ValueEq(other *Err) bool {
 	if e == nil || other == nil {
@@ -320,7 +328,8 @@ func (e *Err) ValueEq(other *Err) bool {
 	return errors.Is(e.Value, other.Value)
 }
 
-// Eq checks if two Err structs are equal by comparing Value and the Prev chain.
+// Eq reports whether e and other have the same Value and an identical Prev chain
+// (each pair compared with [errors.Is]).
 func (e *Err) Eq(other *Err) bool {
 	if e == nil || other == nil {
 		return e == other
@@ -339,8 +348,9 @@ func (e *Err) Eq(other *Err) bool {
 	return ep == nil && op == nil
 }
 
-// ToError converts the Err to a standard error interface value.
-// Returns nil if the Err is nil or empty.
+// ToError returns the receiver as an error interface value, or nil if the Err
+// is nil or empty. This avoids the typed-nil pitfall when returning *Err from
+// a function with an error return type.
 func (e *Err) ToError() error {
 	if e == nil || e.IsEmpty() {
 		return nil

@@ -5,9 +5,40 @@ import (
 	"testing"
 )
 
-func BenchmarkErr_Error(b *testing.B) {
+func BenchmarkErr_New(b *testing.B) {
 	for b.Loop() {
 		e := New(errors.New("test"), "My error message", nil, 0, nil)
+		_ = e
+	}
+}
+
+func BenchmarkErr_NewSimple(b *testing.B) {
+	for b.Loop() {
+		e := NewSimple(errors.New("test"), "My error message", nil)
+		_ = e
+	}
+}
+
+func BenchmarkErr_FromError(b *testing.B) {
+	stdErr := errors.New("test")
+	for b.Loop() {
+		e := FromError(stdErr)
+		_ = e
+	}
+}
+
+func BenchmarkErr_Error(b *testing.B) {
+	e := New(errors.New("test"), "My error message", nil, 500, nil)
+	for b.Loop() {
+		s := e.Error()
+		_ = s
+	}
+}
+
+func BenchmarkErr_Wrap(b *testing.B) {
+	prev := New(errors.New("root"), "root cause", nil, 0, nil)
+	for b.Loop() {
+		e := prev.Wrap(errors.New("wrapper"), "wrapped", nil, 500)
 		_ = e
 	}
 }
@@ -64,6 +95,26 @@ func BenchmarkErr_Is_NestedErrors(b *testing.B) {
 
 	for b.Loop() {
 		ok := e.Is(myErr)
+		_ = ok
+	}
+}
+
+func BenchmarkErr_JSONOrEmpty(b *testing.B) {
+	e := New(errors.New("test"), "My error message", nil, 0, nil)
+
+	for b.Loop() {
+		r := e.JSONOrEmpty()
+		_ = r
+	}
+}
+
+func BenchmarkErr_Eq(b *testing.B) {
+	prev := New(errors.New("root"), "", nil, 0, nil)
+	e1 := New(errors.New("test"), "msg", nil, 0, prev)
+	e2 := New(errors.New("test"), "msg", nil, 0, prev)
+
+	for b.Loop() {
+		ok := e1.Eq(e2)
 		_ = ok
 	}
 }
