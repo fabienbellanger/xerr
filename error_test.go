@@ -28,7 +28,7 @@ func TestErr_New_SimpleError(t *testing.T) {
 	}
 
 	_, _, wantLine, _ := runtime.Caller(0)
-	wantLine++
+	wantLine += 2
 	err := New(errors.New("test"), "My error message", details, 10, nil)
 
 	assert.Equal(t, errors.New("test"), err.Value)
@@ -43,7 +43,7 @@ func TestErr_New_SimpleError(t *testing.T) {
 func TestErr_New_With_Err(t *testing.T) {
 	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
 	_, _, wantLine, _ := runtime.Caller(0)
-	wantLine++
+	wantLine += 2
 	err1 := New(err2, "My error message 1", nil, 10, nil)
 
 	assert.Equal(t, err2, err1.Value)
@@ -56,10 +56,10 @@ func TestErr_New_With_Err(t *testing.T) {
 
 func TestErr_New_NestedErrors(t *testing.T) {
 	_, _, wantLine2, _ := runtime.Caller(0)
-	wantLine2++
+	wantLine2 += 2
 	err2 := New(errors.New("test 2"), "My error message 2", nil, 20, nil)
 	_, _, wantLine1, _ := runtime.Caller(0)
-	wantLine1++
+	wantLine1 += 2
 	err1 := New(errors.New("test 1"), "My error message 1", nil, 10, err2)
 
 	assert.Equal(t, errors.New("test 1"), err1.Value)
@@ -133,7 +133,7 @@ func TestErr_NewSimple_WithSkip(t *testing.T) {
 func TestErr_Wrap(t *testing.T) {
 	err := NewSimple(errors.New("test"), "My error message", nil)
 	_, _, wantLine, _ := runtime.Caller(0)
-	wantLine++
+	wantLine += 2
 	wrappedErr := err.Wrap(errors.New("wrapped error"), "Wrapped message", nil, 100)
 
 	assert.Equal(t, errors.New("wrapped error"), wrappedErr.Value)
